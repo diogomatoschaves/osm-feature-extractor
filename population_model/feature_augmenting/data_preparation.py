@@ -7,10 +7,11 @@ import pandas as pd
 from rtree.index import Index
 
 from population_model.utils.logger import configure_logging
+from population_model.feature_augmenting.features_to_tags import highway_features
 
 directory_path = os.path.dirname(os.path.realpath(__file__))
 
-data_location = os.path.join(directory_path, 'data')
+# data_location = os.path.join(directory_path, 'data')
 
 logger = configure_logging()
 
@@ -27,11 +28,11 @@ def import_polygons_data(dataset_dir):
     return df
 
 
-def import_data(base_data_dir, geojson_file="countries.geojson"):
+def import_data(data_folder, base_data_dir, geojson_file="countries.geojson"):
 
     logger.info('Importing data...')
 
-    countries_df = gpd.read_file(os.path.join(data_location, geojson_file))
+    countries_df = gpd.read_file(os.path.join(data_folder, geojson_file))
 
     base_data_df = import_polygons_data(base_data_dir)
 
@@ -83,24 +84,34 @@ def build_polygons_tree(polygons_df, r_tree_index=None):
     hexagons_dict = {}
 
     for i in range(polygons_df.shape[0]):
+
+        geojson = json.loads(polygons_df.iloc[i : i + 1, :].to_json())
+        geojson = initialize_features(geojson)
+
+        hexagons_dict[i] = geojson
+
         polygon = polygons_df.iloc[i:]["geometry"]
 
         bounding_box = polygon.bbox
 
         r_tree_index.insert(i, bounding_box, polygon)
 
-        polygon_data = json.loads(polygons_df.iloc[i : i + 1, :].to_json())
-
-        hexagons_dict[i] = polygon_data
-
     return r_tree_index, hexagons_dict
 
 
-def process_base_data():
+def initialize_features(geojson):
 
-    base_data_dir = os.path.join(data_location, "kontur-tiles-pop")
+    for key, value in highway_features.items():
+        geojson["properties"][key + value] = 0
 
-    base_data_df, countries_df = import_data(base_data_dir)
+    return geojson
+
+
+def process_base_data(data_folder, files_dir="kontur-tiles-pop"):
+
+    base_data_dir = os.path.join(data_folder, files_dir)
+
+    base_data_df, countries_df = import_data(data_folder, base_data_dir)
 
     polygons_df = intersect_polygons(base_data_df, countries_df, 'GBR')
 
