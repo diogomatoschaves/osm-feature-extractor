@@ -1,19 +1,52 @@
 import os
 import json
+import logging
 
 import geopandas as gpd
 import pandas as pd
+from rtree.index import Rtree
 
-from rtree.index import Index
-
-from population_model.utils.logger import configure_logging
 from population_model.feature_augmenting.features_to_tags import highway_features
 
-directory_path = os.path.dirname(os.path.realpath(__file__))
 
-# data_location = os.path.join(directory_path, 'data')
+def load_data(base_data_dir, file_name):
 
-logger = configure_logging()
+    file_path = os.path.join(base_data_dir, file_name)
+
+    base_data_df = gpd.read_file(file_path)
+
+    return base_data_df
+
+
+def save_data(data_df, base_data_dir, file_name):
+
+    logging.info(f"\tSaving {file_name} in {base_data_dir}...")
+
+    file_path = os.path.join(base_data_dir, file_name)
+
+    logging.info(file_path)
+
+    data_df.to_file(file_path, driver="GeoJSON")
+
+
+def load_json(base_data_dir, file_name):
+
+    file_path = os.path.join(base_data_dir, file_name)
+
+    with open(file_path, "r") as f:
+        data = json.load(f)
+
+    return data
+
+
+def save_json(data, base_data_dir, file_name):
+
+    logging.info(f"\tSaving {file_name} in {base_data_dir}...")
+
+    file_path = os.path.join(base_data_dir, file_name)
+
+    with open(file_path, "w") as f:
+        json.dump(data, f)
 
 
 def import_polygons_data(dataset_dir):
@@ -28,20 +61,22 @@ def import_polygons_data(dataset_dir):
     return df
 
 
-def import_data(data_folder, base_data_dir, geojson_file="countries.geojson"):
+def import_data(base_data_dir, population_data_folder, countries_file):
 
-    logger.info('Importing data...')
+    logging.info("\tImporting data...")
 
-    countries_df = gpd.read_file(os.path.join(data_folder, geojson_file))
+    population_data = os.path.join(base_data_dir, population_data_folder)
 
-    base_data_df = import_polygons_data(base_data_dir)
+    countries_df = gpd.read_file(os.path.join(base_data_dir, countries_file))
+
+    base_data_df = import_polygons_data(population_data)
 
     return base_data_df, countries_df
 
 
 def intersect_polygons(df_1, df_2, country_code):
 
-    logger.info('Intersecting polygons...')
+    logging.info("\tIntersecting polygons...")
 
     country_df = df_2[df_2["ISO_A3"] == country_code]
 
@@ -52,7 +87,7 @@ def intersect_polygons(df_1, df_2, country_code):
 
 def clean_data(base_data_df):
 
-    logger.info('Cleaning data...')
+    logging.info("\tCleaning data...")
 
     base_data_df = base_data_df.drop_duplicates(
         subset=[
@@ -71,52 +106,82 @@ def clean_data(base_data_df):
         columns=["one", "avg_ts", "max_ts", "p90_ts", "local_hours", "total_hours"]
     )
 
-    return base_data_df
+    return base_data_df.reset_index(drop=True)
 
 
-def build_polygons_tree(polygons_df, r_tree_index=None):
+def build_polygons_dataset(polygons_df, base_data_dir, r_tree_file, create_r_tree):
 
-    logger.info('Building R-Tree...')
+    logging.info("\tInitializing features...")
 
-    if not r_tree_index:
-        r_tree_index = Index()
+    polygons_df = initialize_features(polygons_df)
 
-    hexagons_dict = {}
+    if create_r_tree:
 
-    for i in range(polygons_df.shape[0]):
+        logging.info("\tBuilding R-Tree...")
 
-        geojson = json.loads(polygons_df.iloc[i : i + 1, :].to_json())
-        geojson = initialize_features(geojson)
+        build_r_tree(polygons_df, base_data_dir, r_tree_file)
 
-        hexagons_dict[i] = geojson
-
-        polygon = polygons_df.iloc[i:]["geometry"]
-
-        bounding_box = polygon.bbox
-
-        r_tree_index.insert(i, bounding_box, polygon)
-
-    return r_tree_index, hexagons_dict
+    return polygons_df
 
 
-def initialize_features(geojson):
+def build_r_tree(polygons_df, base_data_dir, r_tree_file):
+
+    r_tree_path = os.path.join(base_data_dir, r_tree_file)
+
+    r_tree_index = Rtree(r_tree_path, overwrite=True)
+
+    polygons = polygons_df["geometry"].values
+    polygon_indexes = polygons_df.index
+
+    for i, polygon in enumerate(polygons):
+
+        bounding_box = polygon.bounds
+
+        r_tree_index.insert(polygon_indexes[i], bounding_box, polygon)
+
+    r_tree_index.close()
+
+
+def initialize_features(polygon_df):
+
+    polygon_df["updated"] = False
 
     for key, value in highway_features.items():
-        geojson["properties"][key + value] = 0
+        feature = '_'.join([key, value])
 
-    return geojson
+        polygon_df[feature] = 0
+
+    return polygon_df
 
 
-def process_base_data(data_folder, files_dir="kontur-tiles-pop"):
+def process_base_data(
+    base_data_dir,
+    population_data_folder,
+    countries_file,
+    clean_data_file,
+    r_tree_file,
+    hexagons_file,
+    skip_data_cleaning=False,
+    create_r_tree=True
+):
 
-    base_data_dir = os.path.join(data_folder, files_dir)
+    if skip_data_cleaning:
+        logging.info("\tImporting data...")
 
-    base_data_df, countries_df = import_data(data_folder, base_data_dir)
+        base_data_df = load_data(base_data_dir, clean_data_file)
+    else:
+        base_data_df, countries_df = import_data(
+            base_data_dir, population_data_folder, countries_file
+        )
 
-    polygons_df = intersect_polygons(base_data_df, countries_df, 'GBR')
+        base_data_df = intersect_polygons(base_data_df, countries_df, "GBR")
 
-    polygons_df = clean_data(polygons_df)
+        base_data_df = clean_data(base_data_df)
 
-    r_tree_index, hexagons_dict = build_polygons_tree(polygons_df)
+        save_data(base_data_df, base_data_dir, clean_data_file)
 
-    return r_tree_index, hexagons_dict
+    polygons_df = build_polygons_dataset(base_data_df, base_data_dir, r_tree_file, create_r_tree)
+
+    polygons = {feature["id"]: feature for feature in json.loads(polygons_df.to_json())["features"]}
+
+    save_json(polygons, base_data_dir, hexagons_file)

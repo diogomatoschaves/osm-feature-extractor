@@ -2,7 +2,7 @@ import logging
 import sys
 
 
-def configure_logging():
+def configure_logger():
     logger = logging.getLogger()
 
     for handler in logger.handlers[:]:

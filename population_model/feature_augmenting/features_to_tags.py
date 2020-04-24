@@ -1,5 +1,3 @@
-
-
 highway_features = {
     "highway_motorway": "length",
     "highway_trunk": "length",
@@ -14,7 +12,7 @@ highway_features = {
     "highway_crossing": "count",
     "highway_traffic_signals": "count",
     "highway_traffic_calming": "count",
-    "highway_street_lamp": "count"
+    "highway_street_lamp": "count",
 }
 
 highway_tags = {
@@ -40,5 +38,5 @@ highway_tags = {
     "crossing": "highway_crossing",
     "traffic_signals": "highway_traffic_signals",
     "traffic_calming": "highway_traffic_calming",
-    "street_lamp": "highway_street_lamp"
+    "street_lamp": "highway_street_lamp",
 }

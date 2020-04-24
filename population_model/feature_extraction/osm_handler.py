@@ -1,4 +1,5 @@
 import logging
+import os
 import pickle
 
 import osmium
@@ -7,27 +8,26 @@ from population_model.feature_extraction.osm_datamodel import Node, SimpleNode, 
 
 
 node_tags = {"highway"}
+way_tags = {"highway"}
 
 
 class OSMFileHandler(osmium.SimpleHandler):
-
     def __init__(self):
         osmium.SimpleHandler.__init__(self)
 
         self.all_nodes = {}
-        self.ways = {}
+        self.nodes_counter = 0
+        self.ways_counter = 0
+        self.ways = dict(**{tag: [] for tag in way_tags})
         self.nodes = dict(**{tag: [] for tag in node_tags})
 
     def node(self, n):
 
-        self.check_status('nodes')
+        self.check_status(self.nodes_counter, "nodes")
 
         coords = [n.location.lon, n.location.lat]
 
-        tags = dict(
-            version=n.version,
-            **{tag.k: tag.v for tag in n.tags},
-        )
+        tags = dict(version=n.version, **{tag.k: tag.v for tag in n.tags},)
 
         node = SimpleNode(n.id, coords, tags=tags)
 
@@ -40,9 +40,11 @@ class OSMFileHandler(osmium.SimpleHandler):
 
                 self.nodes[tag].append(node)
 
+        self.nodes_counter += 1
+
     def way(self, w):
 
-        self.check_status('ways')
+        self.check_status(self.ways_counter, "ways")
 
         if any(tag in w.tags for tag in ["highway", "cycleway"]):
 
@@ -51,27 +53,48 @@ class OSMFileHandler(osmium.SimpleHandler):
 
             tags = dict(version=w.version, **{tag.k: tag.v for tag in w.tags})
 
-            self.ways[w.id] = Way(w.id, coords, node_ids, tags=tags)
+            self.ways["highway"].append(Way(w.id, coords, node_ids, tags=tags))
+
+        self.ways_counter += 1
 
     def area(self, a):
         pass
 
-    def check_status(self, osm_object):
+    @staticmethod
+    def check_status(count, obj_name):
 
-        processed_objects = len(getattr(self, osm_object))
+        if count == 0:
+            logging.info(f"\tProcessing {obj_name}...")
 
-        if processed_objects == 0:
-            logging.info(f'Processing {osm_object}...')
+        elif count % 100000 == 0:
+            logging.info(f"\t\tProcessed {count} {obj_name}...")
 
-        elif processed_objects % 100000 == 0:
-            logging.info(f'Processed {processed_objects} {osm_object}...')
+    def save(self, path=""):
 
-    def save(self, path='feature_extraction.pickle'):
+        with open(os.path.join(path, "nodes.pickle"), "wb") as f:
+            pickle.dump(self.nodes, f)
 
-        class FeatureExtraction:
-            def __init__(self, nodes, ways):
-                self.nodes = nodes
-                self.ways = ways
+        with open(os.path.join(path, "ways.pickle"), "wb") as f:
+            pickle.dump(self.ways, f)
 
-        with open(path, 'wb') as f:
-            pickle.dump(FeatureExtraction(self.nodes, self.ways), f)
+
+def load_osm_data(osm_data_dir):
+
+    with open(os.path.join(osm_data_dir, "nodes.pickle"), "rb") as f:
+        nodes = pickle.load(f)
+
+    with open(os.path.join(osm_data_dir, "ways.pickle"), "rb") as f:
+        ways = pickle.load(f)
+
+    return nodes, ways
+
+
+def extract_features(osm_data_dir, osm_file):
+
+    file_path = os.path.join(osm_data_dir, osm_file)
+
+    osm_handler = OSMFileHandler()
+    osm_handler.apply_file(file_path)
+    osm_handler.save(osm_data_dir)
+
+    return osm_handler.nodes, osm_handler.ways

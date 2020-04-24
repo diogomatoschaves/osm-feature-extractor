@@ -15,7 +15,7 @@ class Node(Point):
         tags (dict): tags of node
     """
 
-    def __init__(self, id_, coords, tags=None):
+    def __init__(self, id_=None, coords=None, tags=None):
         Point.__init__(self, coords)
 
         self.id: int = id_
@@ -24,6 +24,9 @@ class Node(Point):
     @property
     def coordinates(self):
         return [list(coord) for coord in self.coords][0]
+
+    def __getinitargs__(self):
+        return self.id, self.coords, self.tags
 
 
 class Way(LineString):
@@ -38,7 +41,7 @@ class Way(LineString):
         tags (dict): dict with tags
     """
 
-    def __init__(self, id_, coords, nodes, tags=None):
+    def __init__(self, id_=None, coords=None, nodes=None, tags=None):
         LineString.__init__(self, coords)
 
         self.id: int = id_
@@ -48,3 +51,6 @@ class Way(LineString):
     @property
     def coordinates(self):
         return [list(coord) for coord in self.coords]
+
+    def __getinitargs__(self):
+        return self.id, self.coords, self.nodes, self.tags
