@@ -1,3 +1,5 @@
+# TODO: count if it's oneway or not
+
 highway_features = {
     "highway_motorway": "length",
     "highway_trunk": "length",

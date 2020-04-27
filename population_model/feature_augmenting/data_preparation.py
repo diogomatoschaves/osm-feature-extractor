@@ -147,7 +147,7 @@ def initialize_features(polygon_df):
     polygon_df["updated"] = False
 
     for key, value in highway_features.items():
-        feature = '_'.join([key, value])
+        feature = "_".join([key, value])
 
         polygon_df[feature] = 0
 
@@ -162,7 +162,7 @@ def process_base_data(
     r_tree_file,
     hexagons_file,
     skip_data_cleaning=False,
-    create_r_tree=True
+    create_r_tree=True,
 ):
 
     if skip_data_cleaning:
@@ -180,8 +180,13 @@ def process_base_data(
 
         save_data(base_data_df, base_data_dir, clean_data_file)
 
-    polygons_df = build_polygons_dataset(base_data_df, base_data_dir, r_tree_file, create_r_tree)
+    polygons_df = build_polygons_dataset(
+        base_data_df, base_data_dir, r_tree_file, create_r_tree
+    )
 
-    polygons = {feature["id"]: feature for feature in json.loads(polygons_df.to_json())["features"]}
+    polygons = {
+        feature["id"]: feature
+        for feature in json.loads(polygons_df.to_json())["features"]
+    }
 
     save_json(polygons, base_data_dir, hexagons_file)

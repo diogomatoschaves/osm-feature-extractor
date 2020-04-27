@@ -1,13 +1,26 @@
-import logging
-import os
 import sys
+import os
+import logging
 import json
 import time
+from collections import defaultdict
 
 from turf import feature_collection
 
+try:
+    directory_path = "/".join(
+        os.path.dirname(os.path.realpath(__file__)).split("/")[:-1]
+    )
+    sys.path.append(directory_path)
+except NameError:
+    pass
+
 from population_model.feature_augmenting.features_augmenter import (
     match_polygons_to_features,
+)
+from population_model.feature_extraction.osm_analyzer import (
+    analyze_osm_file,
+    split_bounds,
 )
 from population_model.utils.config_parser import get_config
 from population_model.utils.logger import configure_logger
@@ -19,10 +32,6 @@ from population_model.feature_extraction.osm_handler import (
     extract_features,
     load_osm_data,
 )
-
-# directory_path = '/'.join(os.path.dirname(os.path.realpath(__file__)).split('/')[:-1])
-
-# sys.path.append(directory_path)
 
 
 def main():
@@ -46,7 +55,7 @@ def main():
             config.r_tree_file,
             config.hexagons_file,
             skip_data_cleaning=True,
-            create_r_tree=False
+            create_r_tree=False,
         )
 
     else:
@@ -58,28 +67,54 @@ def main():
         base_data_dir=config.base_data_dir, file_name=config.hexagons_file
     )
 
-    # ========================= Extract features ===============================
+    # ========================= Extract features & Augment data ===============================
 
-    if eval(config.process_osm_data):
+    updated_polygons = set()
 
-        logging.info("Processing OSM data...")
+    logging.info("Processing OSM data and Augmenting base data...")
+    logging.info("\tAnalyzing OSM file...")
 
-        nodes, ways = extract_features(config.osm_data_dir, config.osm_file)
+    nr_nodes, bbox, centroid, std = analyze_osm_file(
+        config.osm_data_dir, config.osm_file
+    )
 
-    else:
-        logging.info("Importing preprocessed OSM data...")
+    split_lng, split_lat = split_bounds(
+        nr_nodes, bbox, centroid, std, max_nodes_box=4e6
+    )
 
-        nodes, ways = load_osm_data(config.osm_data_dir)
+    number_batches = (len(split_lng) - 1) ** 2
 
-    # =========================== Augment data =================================
-
-    logging.info("Augmenting data...")
+    logging.info(f"\t\tFile will be processed in {number_batches} batches...")
 
     r_tree_path = os.path.join(config.base_data_dir, config.r_tree_file)
 
-    hexagons, updated_polygons = match_polygons_to_features(
-        hexagons, r_tree_path, nodes, ways
-    )
+    i = 1
+
+    border_edges = defaultdict(lambda: {})
+    edges = set()
+
+    for lng_bounds in zip(split_lng, split_lng[1:]):
+        for lat_bounds in zip(split_lat, split_lat[1:]):
+
+            bounds = (lng_bounds[0], lat_bounds[0], lng_bounds[1], lat_bounds[1])
+
+            logging.info(f"\tProcessing OSM data for batch {i}: {bounds}...")
+
+            nodes, ways, border_edges, edges = extract_features(
+                config.osm_data_dir, config.osm_file, bounds, border_edges, edges
+            )
+
+            # ===========================  =================================
+
+            logging.info(f"\tAugmenting data for batch {i}: {bounds}...")
+
+            hexagons, updated_polygons_batch = match_polygons_to_features(
+                hexagons, r_tree_path, nodes, ways
+            )
+
+            updated_polygons.update(updated_polygons_batch)
+
+            i += 1
 
     # ========================== Export Results ===================================
 
@@ -90,7 +125,7 @@ def main():
     with open(config.out_file, "w") as f:
         json.dump(polygons_collection, f)
 
-    return updated_polygons
+    return updated_polygons, border_edges
 
 
 if __name__ == "__main__":

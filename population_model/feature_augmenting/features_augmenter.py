@@ -25,7 +25,7 @@ def get_features(tags):
             feature_name = highway_tags[tags["highway"]]
             feature_suffix = highway_features[feature_name]
 
-            feature = '_'.join([feature_name, feature_suffix])
+            feature = "_".join([feature_name, feature_suffix])
 
             features.append(feature)
         except KeyError:
@@ -35,7 +35,7 @@ def get_features(tags):
         feature_name = "highway_cycleway"
         feature_suffix = highway_features[feature_name]
 
-        feature = '_'.join([feature_name, feature_suffix])
+        feature = "_".join([feature_name, feature_suffix])
 
         features.append(feature)
 
@@ -52,9 +52,9 @@ def handle_multi_line_string(multi_line_string):
 
     for match in matches:
 
-        clean_match = match.replace('(', '').replace(')', '').split(', ')
+        clean_match = match.replace("(", "").replace(")", "").split(", ")
 
-        coords = [[float(c) for c in coord.split(' ')] for coord in clean_match]
+        coords = [[float(c) for c in coord.split(" ")] for coord in clean_match]
 
         line_strings.append(line_string(coords))
 
@@ -65,9 +65,10 @@ def match_polygons_to_features(polygons, r_tree_path, nodes, ways, areas=None):
 
     r_tree_index = load_r_tree(r_tree_path)
 
+    # updated_polygons = {key for key, polygon in polygons.items() if polygon["updated"]}
     updated_polygons = set()
 
-    logging.info("\tMatching node features to polygons...")
+    logging.info("\t\tMatching node features to polygons...")
 
     for tag_id, nodes_lst in nodes.items():
 
@@ -86,11 +87,14 @@ def match_polygons_to_features(polygons, r_tree_path, nodes, ways, areas=None):
 
                             updated_polygons.add(match.id)
 
-    logging.info("\tMatching way features to polygons...")
+    logging.info("\t\tMatching way features to polygons...")
 
     for tag_id, ways_lst in ways.items():
         for way in ways_lst:
             features = get_features(way.tags)
+
+            if len(way.bounds) != 4 or not isinstance(way.bounds, tuple):
+                a = 1
 
             matches = list(r_tree_index.intersection(way.bounds, objects=True))
 
@@ -102,19 +106,21 @@ def match_polygons_to_features(polygons, r_tree_path, nodes, ways, areas=None):
 
                     geom_type = intersection.geom_type
 
-                    if geom_type == 'LineString':
+                    if geom_type == "LineString":
                         coords = [list(coord) for coord in intersection.coords]
 
-                    elif geom_type == 'MultiLineString':
+                    elif geom_type == "MultiLineString":
 
                         try:
                             coords = handle_multi_line_string(intersection.wkt)
                         except InvalidInput:
-                            logging.info(f'Found LineString with only 1 coords: {intersection.wkt}')
+                            logging.info(
+                                f"Found LineString with only 1 coords: {intersection.wkt}"
+                            )
                             continue
 
                     else:
-                        logging.info(f'Found geometry type {geom_type}')
+                        logging.info(f"Found geometry type {geom_type}")
 
                         continue
 
@@ -122,7 +128,9 @@ def match_polygons_to_features(polygons, r_tree_path, nodes, ways, areas=None):
 
                     for feature in features:
                         if "length" in feature:
-                            polygons[str(match.id)]["properties"][feature] += line_length
+                            polygons[str(match.id)]["properties"][
+                                feature
+                            ] += line_length
                             polygons[str(match.id)]["properties"]["updated"] = True
 
                             updated_polygons.add(match.id)
