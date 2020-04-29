@@ -6,7 +6,21 @@ import geopandas as gpd
 import pandas as pd
 from rtree.index import Rtree
 
-from population_model.feature_augmenting.features_to_tags import highway_features
+from population_model.feature_augmenting.features_to_tags import (
+    features_types,
+    building_tags,
+    highway_tags,
+    cycleway_tags,
+    amenity_tags,
+    landuse_tags,
+    railway_tags,
+    public_transport_tags,
+    shop_tags,
+    unspecific_tags,
+    node_tags,
+    way_tags,
+    area_tags,
+)
 
 
 def load_data(base_data_dir, file_name):
@@ -146,10 +160,31 @@ def initialize_features(polygon_df):
 
     polygon_df["updated"] = False
 
-    for key, value in highway_features.items():
-        feature = "_".join([key, value])
+    for obj in [("node", "count"), ("way", "length"), ("area", "area")]:
 
-        polygon_df[feature] = 0
+        object_tags = eval(f"{obj[0]}_tags")
+
+        for tag in object_tags:
+
+            if tag in unspecific_tags:
+                feature_name = tag
+
+                feature = "_".join([feature_name, obj[1]])
+
+                polygon_df[feature] = 0
+
+            else:
+                features_dict = eval(f"{tag}_tags")
+
+                features_set = {value for value in features_dict.values()}
+
+                for feature_name in features_set:
+
+                    if obj[1] in features_types[feature_name]:
+
+                        feature = "_".join([feature_name, obj[1]])
+
+                        polygon_df[feature] = 0
 
     return polygon_df
 
