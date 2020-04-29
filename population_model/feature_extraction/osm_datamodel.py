@@ -1,7 +1,7 @@
+from abc import ABC
 from collections import namedtuple
 from typing import List, Dict
-from shapely.geometry import Point, LineString
-
+from shapely.geometry import Point, LineString, Polygon
 
 SimpleNode = namedtuple("Node", ("id", "coordinates", "tags"))
 
@@ -51,6 +51,33 @@ class Way(LineString):
     @property
     def coordinates(self):
         return [list(coord) for coord in self.coords]
+
+    def __getinitargs__(self):
+        return self.id, self.coords, self.nodes, self.tags
+
+
+class Area(Polygon, ABC):
+
+    """
+    This class stores information about osm ways
+
+    Attributes:
+        id (int): ID of way
+        coords (list): coordinates of LineString
+        nodes (list): list of node ids
+        tags (dict): dict with tags
+    """
+
+    def __init__(self, id_=None, coords=None, nodes=None, tags=None):
+        Polygon.__init__(self, coords)
+
+        self.id: int = id_
+        self.nodes: List[int] = nodes
+        self.tags: Dict = tags
+
+    @property
+    def coordinates(self):
+        return [list(coord) for coord in self.exterior.coords]
 
     def __getinitargs__(self):
         return self.id, self.coords, self.nodes, self.tags
