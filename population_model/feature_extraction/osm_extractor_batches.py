@@ -2,6 +2,7 @@ import logging
 import os
 import pickle
 from collections import defaultdict
+from copy import deepcopy
 from typing import Sequence
 
 import osmium
@@ -15,7 +16,7 @@ way_tags = {"highway"}
 
 
 class OSMFileHandler(osmium.SimpleHandler):
-    def __init__(self, bounds=None, missing_edges=None, edges=None):
+    def __init__(self, bounds=None, missing_edges=None, way_edges=None, batch=None):
         osmium.SimpleHandler.__init__(self)
 
         self.all_nodes = {}
@@ -25,7 +26,8 @@ class OSMFileHandler(osmium.SimpleHandler):
         self.nodes = dict(**{tag: [] for tag in node_tags})
         self.bounds = bounds if bounds else [-180, -90, 180, 90]
         self.border_edges = missing_edges if missing_edges else defaultdict(lambda: {})
-        self.edges = set() if not edges else edges
+        self.way_edges = way_edges if way_edges else defaultdict(lambda: set())
+        self.batch = batch
 
     def node(self, n):
 
@@ -53,6 +55,9 @@ class OSMFileHandler(osmium.SimpleHandler):
 
     def way(self, w):
 
+        # if deepcopy(w.id) in {598166, 2907228, 2907396, 153576365,  172541003,
+        #             215266598, 368808351, 368808354, 497845339, 632103063} and self.batch > 1:
+
         if any(tag in w.tags for tag in ["highway", "cycleway"]):
 
             nodes = [node.ref for node in w.nodes]
@@ -66,8 +71,7 @@ class OSMFileHandler(osmium.SimpleHandler):
 
             self.ways_counter += 1
 
-            # if False in bool_nodes_in_bounds:
-            if True:
+            if False in bool_nodes_in_bounds:
 
                 edges = zip(nodes, nodes[1:])
 
@@ -75,6 +79,11 @@ class OSMFileHandler(osmium.SimpleHandler):
                 coords_in_bounds = [[]]
 
                 for edge in edges:
+
+                    if edge in self.way_edges[w.id]:
+
+                        logging.info(f'edge {edge} was not imputed')
+                        continue
 
                     if len(nodes_in_bounds[-1]) > 0 and nodes_in_bounds[-1][-1] != edge[0]:
                         nodes_in_bounds.append(OrderedSet())
@@ -88,13 +97,13 @@ class OSMFileHandler(osmium.SimpleHandler):
 
                     elif edge[0] in self.all_nodes:
 
-                        self.handle_missing_node(
+                        nodes_in_bounds, coords_in_bounds = self.handle_missing_node(
                             edge, edge[1], edge[0], nodes_in_bounds, coords_in_bounds
                         )
 
                     elif edge[1] in self.all_nodes:
 
-                        self.handle_missing_node(
+                        nodes_in_bounds, coords_in_bounds = self.handle_missing_node(
                             edge, edge[0], edge[1], nodes_in_bounds, coords_in_bounds
                         )
 
@@ -114,14 +123,13 @@ class OSMFileHandler(osmium.SimpleHandler):
 
                 pairs = list(zip(node_ids, node_ids[1:]))
 
-                if any(p in self.edges for p in pairs):
-                    a = 1
+                for pair in pairs:
+                    if pair in self.way_edges[w.id]:
+                        logging.info(f'edge {pair} should not be included')
 
-                self.edges.update(pairs)
+                self.way_edges[w.id].update({pair for pair in pairs})
 
-                id_ = w.id
-
-                way = Way(id_, coords, node_ids, tags=tags)
+                way = Way(w.id, coords, node_ids, tags=tags)
 
                 self.ways["highway"].append(way)
 
@@ -187,12 +195,12 @@ def load_osm_data(osm_data_dir):
     return nodes, ways
 
 
-def extract_features(osm_data_dir, osm_file, bounds, border_edges=None, edges=None):
+def extract_features(osm_data_dir, osm_file, bounds, border_edges=None, way_edges=None, batch=None):
 
     file_path = os.path.join(osm_data_dir, osm_file)
 
-    osm_handler = OSMFileHandler(bounds, border_edges)
+    osm_handler = OSMFileHandler(bounds, border_edges, way_edges, batch)
     osm_handler.apply_file(file_path)
     osm_handler.save(osm_data_dir)
 
-    return osm_handler.nodes, osm_handler.ways, osm_handler.border_edges, osm_handler.edges
+    return osm_handler.nodes, osm_handler.ways, osm_handler.border_edges, osm_handler.way_edges
