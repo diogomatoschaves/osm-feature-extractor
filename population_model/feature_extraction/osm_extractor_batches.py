@@ -2,17 +2,16 @@ import logging
 import os
 import pickle
 from collections import defaultdict
-from copy import deepcopy
-from typing import Sequence
 
 import osmium
 from ordered_set import OrderedSet
 
+from population_model.feature_augmenting.features_to_tags import node_tags, way_tags
 from population_model.feature_extraction.osm_datamodel import Node, SimpleNode, Way
-
-
-node_tags = {"highway"}
-way_tags = {"highway"}
+from population_model.feature_extraction.osm_extractor import (
+    in_bbox,
+    check_status,
+)
 
 
 class OSMFileHandler(osmium.SimpleHandler):
@@ -33,10 +32,10 @@ class OSMFileHandler(osmium.SimpleHandler):
 
         coords = [n.location.lon, n.location.lat]
 
-        if not self.in_bbox(coords, self.bounds):
+        if not in_bbox(coords, self.bounds):
             return
 
-        self.check_status(self.nodes_counter, "nodes")
+        check_status(self.nodes_counter, "nodes")
 
         tags = dict(version=n.version, **{tag.k: tag.v for tag in n.tags},)
 
@@ -55,9 +54,6 @@ class OSMFileHandler(osmium.SimpleHandler):
 
     def way(self, w):
 
-        # if deepcopy(w.id) in {598166, 2907228, 2907396, 153576365,  172541003,
-        #             215266598, 368808351, 368808354, 497845339, 632103063} and self.batch > 1:
-
         if any(tag in w.tags for tag in ["highway", "cycleway"]):
 
             nodes = [node.ref for node in w.nodes]
@@ -67,7 +63,7 @@ class OSMFileHandler(osmium.SimpleHandler):
             if True not in bool_nodes_in_bounds:
                 return
 
-            self.check_status(self.ways_counter, "ways")
+            check_status(self.ways_counter, "ways")
 
             self.ways_counter += 1
 
@@ -82,10 +78,13 @@ class OSMFileHandler(osmium.SimpleHandler):
 
                     if edge in self.way_edges[w.id]:
 
-                        logging.info(f'edge {edge} was not imputed')
+                        logging.info(f"edge {edge} was not imputed")
                         continue
 
-                    if len(nodes_in_bounds[-1]) > 0 and nodes_in_bounds[-1][-1] != edge[0]:
+                    if (
+                        len(nodes_in_bounds[-1]) > 0
+                        and nodes_in_bounds[-1][-1] != edge[0]
+                    ):
                         nodes_in_bounds.append(OrderedSet())
 
                     if edge[0] in self.all_nodes and edge[1] in self.all_nodes:
@@ -112,7 +111,9 @@ class OSMFileHandler(osmium.SimpleHandler):
 
             else:
                 nodes_in_bounds = [nodes]
-                coords_in_bounds = [[self.all_nodes[node].coordinates for node in nodes]]
+                coords_in_bounds = [
+                    [self.all_nodes[node].coordinates for node in nodes]
+                ]
 
             tags = dict(version=w.version, **{tag.k: tag.v for tag in w.tags})
 
@@ -123,15 +124,18 @@ class OSMFileHandler(osmium.SimpleHandler):
 
                 pairs = list(zip(node_ids, node_ids[1:]))
 
-                for pair in pairs:
-                    if pair in self.way_edges[w.id]:
-                        logging.info(f'edge {pair} should not be included')
-
                 self.way_edges[w.id].update({pair for pair in pairs})
 
-                way = Way(w.id, coords, node_ids, tags=tags)
+                for tag_id in way_tags:
 
-                self.ways["highway"].append(way)
+                    if tag_id in tags:
+
+                        if tag_id == "cycleway" and tags.get("highway") == "cycleway":
+                            continue
+
+                        way = Way(w.id, coords, node_ids, tags=tags)
+
+                        self.ways[tag_id].append(way)
 
     def area(self, a):
         pass
@@ -151,29 +155,11 @@ class OSMFileHandler(osmium.SimpleHandler):
             coords_in_bounds[-1].extend([node_1_coords, node_2_coords])
 
         else:
-            self.border_edges[edge][existing_node] = self.all_nodes[existing_node].coordinates
+            self.border_edges[edge][existing_node] = self.all_nodes[
+                existing_node
+            ].coordinates
 
         return nodes_in_bounds, coords_in_bounds
-
-    @staticmethod
-    def in_bbox(point: Sequence, bbox: Sequence):
-        """
-        Checks if point is inside bbox
-
-        :param point: point coordinates [lng, lat]
-        :param bbox: bbox [west, south, east, north]
-        :return: True if point is inside, False otherwise
-        """
-        return bbox[0] <= point[0] <= bbox[2] and bbox[1] <= point[1] <= bbox[3]
-
-    @staticmethod
-    def check_status(count, obj_name):
-
-        if count == 0:
-            logging.info(f"\t\tProcessing {obj_name}...")
-
-        elif count % 100000 == 0:
-            logging.info(f"\t\t\tProcessed {count} {obj_name}...")
 
     def save(self, path=""):
 
@@ -184,23 +170,20 @@ class OSMFileHandler(osmium.SimpleHandler):
             pickle.dump(self.ways, f)
 
 
-def load_osm_data(osm_data_dir):
-
-    with open(os.path.join(osm_data_dir, "nodes.pickle"), "rb") as f:
-        nodes = pickle.load(f)
-
-    with open(os.path.join(osm_data_dir, "ways.pickle"), "rb") as f:
-        ways = pickle.load(f)
-
-    return nodes, ways
-
-
-def extract_features(osm_data_dir, osm_file, bounds, border_edges=None, way_edges=None, batch=None):
+def extract_features_batches(
+    osm_data_dir, osm_file, bounds, border_edges=None, way_edges=None, batch=None
+):
 
     file_path = os.path.join(osm_data_dir, osm_file)
 
     osm_handler = OSMFileHandler(bounds, border_edges, way_edges, batch)
     osm_handler.apply_file(file_path)
+
     osm_handler.save(osm_data_dir)
 
-    return osm_handler.nodes, osm_handler.ways, osm_handler.border_edges, osm_handler.way_edges
+    return (
+        osm_handler.nodes,
+        osm_handler.ways,
+        osm_handler.border_edges,
+        osm_handler.way_edges,
+    )

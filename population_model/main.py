@@ -28,10 +28,68 @@ from population_model.feature_augmenting.data_preparation import (
     process_base_data,
     load_json,
 )
-from population_model.feature_extraction.osm_handler import (
-    extract_features,
-    load_osm_data,
+from population_model.feature_extraction.osm_extractor_batches import (
+    extract_features_batches,
 )
+from population_model.feature_extraction.osm_extractor_augmenter import (
+    extract_features_augment,
+)
+
+
+def osm_extract_in_batches(config, hexagons):
+
+    logging.info("\tAnalyzing OSM file...")
+
+    nr_nodes, bbox, centroid, std = analyze_osm_file(
+        config.osm_data_dir, config.osm_file
+    )
+
+    split_lng, split_lat = split_bounds(
+        nr_nodes, bbox, centroid, std, max_nodes_box=9e6
+    )
+
+    number_batches = (len(split_lng) - 1) ** 2
+
+    logging.info(f"\t\tFile will be processed in {number_batches} batches...")
+
+    r_tree_path = os.path.join(config.base_data_dir, config.r_tree_file)
+
+    i = 1
+
+    border_edges = defaultdict(lambda: {})
+    way_edges = defaultdict(lambda: set())
+
+    for lng_bounds in zip(split_lng, split_lng[1:]):
+        for lat_bounds in zip(split_lat, split_lat[1:]):
+
+            bounds = (lng_bounds[0], lat_bounds[0], lng_bounds[1], lat_bounds[1])
+
+            logging.info(f"\tProcessing OSM data for batch {i}: {bounds}...")
+
+            nodes, ways, border_edges, way_edges = extract_features_batches(
+                config.osm_data_dir, config.osm_file, bounds, border_edges, way_edges, i
+            )
+
+            # ===========================  =================================
+
+            logging.info(f"\tAugmenting data for batch {i}: {bounds}...")
+
+            hexagons = match_polygons_to_features(hexagons, r_tree_path, nodes, ways)
+
+            i += 1
+
+    return hexagons
+
+
+def osm_extract_augment(config, hexagons):
+
+    r_tree_path = os.path.join(config.base_data_dir, config.r_tree_file)
+
+    hexagons = extract_features_augment(
+        config.osm_data_dir, config.osm_file, hexagons, r_tree_path
+    )
+
+    return hexagons
 
 
 def main():
@@ -69,52 +127,14 @@ def main():
 
     # ========================= Extract features & Augment data ===============================
 
-    updated_polygons = set()
-
     logging.info("Processing OSM data and Augmenting base data...")
-    logging.info("\tAnalyzing OSM file...")
 
-    nr_nodes, bbox, centroid, std = analyze_osm_file(
-        config.osm_data_dir, config.osm_file
-    )
+    if eval(config.process_in_batches):
 
-    split_lng, split_lat = split_bounds(
-        nr_nodes, bbox, centroid, std, max_nodes_box=4e6
-    )
+        hexagons = osm_extract_in_batches(config, hexagons)
 
-    number_batches = (len(split_lng) - 1) ** 2
-
-    logging.info(f"\t\tFile will be processed in {number_batches} batches...")
-
-    r_tree_path = os.path.join(config.base_data_dir, config.r_tree_file)
-
-    i = 1
-
-    border_edges = defaultdict(lambda: {})
-    edges = set()
-
-    for lng_bounds in zip(split_lng, split_lng[1:]):
-        for lat_bounds in zip(split_lat, split_lat[1:]):
-
-            bounds = (lng_bounds[0], lat_bounds[0], lng_bounds[1], lat_bounds[1])
-
-            logging.info(f"\tProcessing OSM data for batch {i}: {bounds}...")
-
-            nodes, ways, border_edges, edges = extract_features(
-                config.osm_data_dir, config.osm_file, bounds, border_edges, edges
-            )
-
-            # ===========================  =================================
-
-            logging.info(f"\tAugmenting data for batch {i}: {bounds}...")
-
-            hexagons, updated_polygons_batch = match_polygons_to_features(
-                hexagons, r_tree_path, nodes, ways
-            )
-
-            updated_polygons.update(updated_polygons_batch)
-
-            i += 1
+    else:
+        hexagons = osm_extract_augment(config, hexagons)
 
     # ========================== Export Results ===================================
 
@@ -125,8 +145,6 @@ def main():
     with open(config.out_file, "w") as f:
         json.dump(polygons_collection, f)
 
-    return updated_polygons, border_edges
-
 
 if __name__ == "__main__":
-    updated_polygons = main()
+    main()
