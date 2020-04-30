@@ -27,9 +27,16 @@ def load_data(base_data_dir, file_name):
 
     file_path = os.path.join(base_data_dir, file_name)
 
+    input_file_found = True
+
+    if not os.path.exists(file_path):
+        file_path = os.path.join(base_data_dir, 'template.geojson')
+
+        input_file_found = False
+
     base_data_df = gpd.read_file(file_path)
 
-    return base_data_df
+    return base_data_df, input_file_found
 
 
 def save_data(data_df, base_data_dir, file_name):
@@ -123,40 +130,31 @@ def clean_data(base_data_df):
     return base_data_df.reset_index(drop=True)
 
 
-def build_polygons_dataset(polygons_df, base_data_dir, r_tree_file, create_r_tree):
+def build_r_tree(polygons_df, r_tree_path, create_r_tree):
 
-    logging.info("\tInitializing features...")
+    r_tree_file_path = r_tree_path + '.idx'
 
-    polygons_df = initialize_features(polygons_df)
-
-    if create_r_tree:
+    if create_r_tree or not os.path.exists(r_tree_file_path):
 
         logging.info("\tBuilding R-Tree...")
 
-        build_r_tree(polygons_df, base_data_dir, r_tree_file)
+        r_tree_index = Rtree(r_tree_path, overwrite=True)
 
-    return polygons_df
+        polygons = polygons_df["geometry"].values
+        polygon_indexes = polygons_df.index
 
+        for i, polygon in enumerate(polygons):
 
-def build_r_tree(polygons_df, base_data_dir, r_tree_file):
+            bounding_box = polygon.bounds
 
-    r_tree_path = os.path.join(base_data_dir, r_tree_file)
+            r_tree_index.insert(polygon_indexes[i], bounding_box, polygon)
 
-    r_tree_index = Rtree(r_tree_path, overwrite=True)
-
-    polygons = polygons_df["geometry"].values
-    polygon_indexes = polygons_df.index
-
-    for i, polygon in enumerate(polygons):
-
-        bounding_box = polygon.bounds
-
-        r_tree_index.insert(polygon_indexes[i], bounding_box, polygon)
-
-    r_tree_index.close()
+        r_tree_index.close()
 
 
 def initialize_features(polygon_df):
+
+    logging.info("\tInitializing features...")
 
     polygon_df["updated"] = False
 
@@ -193,8 +191,8 @@ def process_base_data(
     base_data_dir,
     population_data_folder,
     countries_file,
-    clean_data_file,
-    r_tree_file,
+    input_data_file,
+    r_tree_path,
     hexagons_file,
     skip_data_cleaning=False,
     create_r_tree=True,
@@ -203,7 +201,7 @@ def process_base_data(
     if skip_data_cleaning:
         logging.info("\tImporting data...")
 
-        base_data_df = load_data(base_data_dir, clean_data_file)
+        base_data_df, input_file_found = load_data(base_data_dir, input_data_file)
     else:
         base_data_df, countries_df = import_data(
             base_data_dir, population_data_folder, countries_file
@@ -213,11 +211,11 @@ def process_base_data(
 
         base_data_df = clean_data(base_data_df)
 
-        save_data(base_data_df, base_data_dir, clean_data_file)
+        save_data(base_data_df, base_data_dir, input_data_file)
 
-    polygons_df = build_polygons_dataset(
-        base_data_df, base_data_dir, r_tree_file, create_r_tree
-    )
+    polygons_df = initialize_features(base_data_df)
+
+    build_r_tree(polygons_df, r_tree_path, create_r_tree)
 
     polygons = {
         feature["id"]: feature

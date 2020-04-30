@@ -141,21 +141,19 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
     osm_handler = OSMFileHandler(polygons, r_tree_index)
     osm_handler.apply_file(file_path, locations=True, idx='flex_mem')
 
-    try:
-        invalid_ways_ratio = (
-            len(osm_handler.incomplete_ways) /
-            osm_handler.ways_counter * 100
-        )
+    invalid_ways_ratio = (
+        len(osm_handler.incomplete_ways) /
+        osm_handler.ways_counter * 100
+    )
 
-        logging.info(
-            f"\t{round(invalid_ways_ratio, 2)} % of ways could not be processed on first pass"
-        )
-    except ZeroDivisionError:
-        pass
-
-    logging.info(f"\tPerforming second pass on OSM file...")
+    logging.info(
+        f"\t{round(invalid_ways_ratio, 2)} % of ways could not be processed on first pass"
+    )
 
     if invalid_ways_ratio != 0:
+
+        logging.info(f"\tPerforming second pass on OSM file...")
+
         osm_handler = OSMFileHandler(
             osm_handler.polygons,
             r_tree_index,

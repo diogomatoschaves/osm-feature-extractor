@@ -15,75 +15,35 @@ try:
 except NameError:
     pass
 
-from population_model.feature_augmenting.features_augmenter import (
-    match_polygons_to_features,
-)
-from population_model.feature_extraction.osm_analyzer import (
-    analyze_osm_file,
-    split_bounds,
-)
 from population_model.utils.config_parser import get_config
 from population_model.utils.logger import configure_logger
 from population_model.feature_augmenting.data_preparation import (
     process_base_data,
     load_json,
 )
-from population_model.feature_extraction.osm_extractor_batches import (
-    extract_features_batches,
-)
 from population_model.feature_extraction.osm_extractor_augmenter import (
     extract_features_augment,
 )
 
 
-def osm_extract_in_batches(config, hexagons):
+def get_r_tree_name(config):
 
-    logging.info("\tAnalyzing OSM file...")
+    input_data_path = os.path.join(config.base_data_dir, config.input_data_file)
 
-    nr_nodes, bbox, centroid, std = analyze_osm_file(
-        config.osm_data_dir, config.osm_file
-    )
+    if os.path.exists(input_data_path):
+        prefix = config.input_data_file.split('.')[0]
 
-    split_lng, split_lat = split_bounds(
-        nr_nodes, bbox, centroid, std, max_nodes_box=9e6
-    )
+    else:
+        prefix = 'world'
 
-    number_batches = (len(split_lng) - 1) ** 2
+    r_tree_file_name = f"{prefix}_rtree"
+    r_tree_path = os.path.join(config.base_data_dir, r_tree_file_name)
+    r_tree_file_path = r_tree_path + '.idx'
 
-    logging.info(f"\t\tFile will be processed in {number_batches} batches...")
-
-    r_tree_path = os.path.join(config.base_data_dir, config.r_tree_file)
-
-    i = 1
-
-    border_edges = defaultdict(lambda: {})
-    way_edges = defaultdict(lambda: set())
-
-    for lng_bounds in zip(split_lng, split_lng[1:]):
-        for lat_bounds in zip(split_lat, split_lat[1:]):
-
-            bounds = (lng_bounds[0], lat_bounds[0], lng_bounds[1], lat_bounds[1])
-
-            logging.info(f"\tProcessing OSM data for batch {i}: {bounds}...")
-
-            nodes, ways, border_edges, way_edges = extract_features_batches(
-                config.osm_data_dir, config.osm_file, bounds, border_edges, way_edges, i
-            )
-
-            # ===========================  =================================
-
-            logging.info(f"\tAugmenting data for batch {i}: {bounds}...")
-
-            hexagons = match_polygons_to_features(hexagons, r_tree_path, nodes, ways)
-
-            i += 1
-
-    return hexagons
+    return r_tree_path, r_tree_file_path
 
 
-def osm_extract_augment(config, hexagons):
-
-    r_tree_path = os.path.join(config.base_data_dir, config.r_tree_file)
+def osm_extract_augment(config, hexagons, r_tree_path):
 
     hexagons = extract_features_augment(
         config.osm_data_dir, config.osm_file, hexagons, r_tree_path
@@ -102,45 +62,40 @@ def main():
 
     # ========================== Load & prepare input data ==============================
 
-    if eval(config.process_base_data):
+    r_tree_path, r_tree_file_path = get_r_tree_name(config)
+
+    if eval(config.process_base_data) or not os.path.exists(r_tree_file_path):
         logging.info("Processing base data...")
 
         process_base_data(
             config.base_data_dir,
             config.population_data_folder,
             config.countries_file,
-            config.clean_data_file,
-            config.r_tree_file,
-            config.hexagons_file,
+            config.input_data_file,
+            r_tree_path,
+            config.polygons_file,
             skip_data_cleaning=True,
-            create_r_tree=False,
+            create_r_tree=True,
         )
 
     else:
         logging.info("Importing preprocessed base data...")
 
-    time.sleep(5)
-
-    hexagons = load_json(
-        base_data_dir=config.base_data_dir, file_name=config.hexagons_file
+    polygons = load_json(
+        base_data_dir=config.base_data_dir, file_name=config.polygons_file
     )
 
     # ========================= Extract features & Augment data ===============================
 
     logging.info("Processing OSM data and Augmenting base data...")
 
-    if eval(config.process_in_batches):
-
-        hexagons = osm_extract_in_batches(config, hexagons)
-
-    else:
-        hexagons = osm_extract_augment(config, hexagons)
+    polygons = osm_extract_augment(config, polygons, r_tree_path)
 
     # ========================== Export Results ===================================
 
     logging.info("Exporting data...")
 
-    polygons_collection = feature_collection(list(hexagons.values()))
+    polygons_collection = feature_collection(list(polygons.values()))
 
     with open(config.out_file, "w") as f:
         json.dump(polygons_collection, f)
