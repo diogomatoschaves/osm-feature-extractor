@@ -124,7 +124,7 @@ def match_ways_to_polygon(tag_id, ways, r_tree_index, polygons):
         feature = get_features(way.tags, tag_id, "length")
 
         if not feature:
-            return polygons
+            continue
 
         matches = list(r_tree_index.intersection(way.bounds, objects=True))
 
@@ -132,35 +132,40 @@ def match_ways_to_polygon(tag_id, ways, r_tree_index, polygons):
             
             try:
                 intersection = way.intersection(match.object)
-            except TopologicalError:
-                continue
 
-            if not intersection.is_empty:
+                if not intersection.is_empty:
 
-                geom_type = intersection.geom_type
+                    geom_type = intersection.geom_type
 
-                if geom_type == "LineString":
-                    coords = [list(coord) for coord in intersection.coords]
+                    if geom_type == "LineString":
+                        coords = [list(coord) for coord in intersection.coords]
 
-                elif geom_type == "MultiLineString":
+                    elif geom_type == "MultiLineString":
 
-                    try:
-                        coords = handle_multi_line_string(intersection.wkt)
-                    except InvalidInput:
-                        logging.info(
-                            f"Found LineString with only 1 coords: {intersection.wkt}"
-                        )
+                        try:
+                            coords = handle_multi_line_string(intersection.wkt)
+                        except InvalidInput:
+                            logging.info(
+                                f"Found LineString with only 1 coords: {intersection.wkt}"
+                            )
+                            continue
+
+                    else:
+                        logging.info(f"Found geometry type {geom_type}")
                         continue
-
                 else:
-                    logging.info(f"Found geometry type {geom_type}")
-
                     continue
 
-                line_length = length(coords, {"units": "meters"})
+            except TopologicalError:
+                if len(polygons) == 1:
+                    coords = way.coordinates
+                else:
+                    continue
 
-                polygons[str(match.id)]["properties"][feature] += line_length
-                polygons[str(match.id)]["properties"]["updated"] = True
+            line_length = round(length(coords, {"units": "meters"}), 2)
+
+            polygons[str(match.id)]["properties"][feature] += line_length
+            polygons[str(match.id)]["properties"]["updated"] = True
 
     return polygons
 
@@ -172,7 +177,7 @@ def match_areas_to_polygon(tag_id, areas, r_tree_index, polygons):
         feature = get_features(area.tags, tag_id, "area")
 
         if not feature:
-            return polygons
+            continue
 
         matches = list(r_tree_index.intersection(area.bounds, objects=True))
 
@@ -180,35 +185,39 @@ def match_areas_to_polygon(tag_id, areas, r_tree_index, polygons):
 
             try:
                 intersection = area.intersection(match.object)
-            except TopologicalError:
-                continue
+                if not intersection.is_empty:
 
-            if not intersection.is_empty:
-                
-                geom_type = intersection.geom_type
+                    geom_type = intersection.geom_type
 
-                if geom_type == "Polygon":
-                    coords = [list(coord) for coord in intersection.exterior.coords]
+                    if geom_type == "Polygon":
+                        coords = [list(coord) for coord in intersection.exterior.coords]
 
-                elif geom_type == "MultiPolygon":
+                    elif geom_type == "MultiPolygon":
 
-                    try:
-                        coords = handle_multi_polygon(intersection.wkt)
-                    except InvalidInput:
-                        logging.info(
-                            f"Found Polygon with invalid coordinates: {intersection.wkt}"
-                        )
+                        try:
+                            coords = handle_multi_polygon(intersection.wkt)
+                        except InvalidInput:
+                            logging.info(
+                                f"Found Polygon with invalid coordinates: {intersection.wkt}"
+                            )
+                            continue
+
+                    else:
+                        logging.info(f"Found geometry type {geom_type}")
                         continue
-
                 else:
-                    logging.info(f"Found geometry type {geom_type}")
-
                     continue
 
-                poly_area = polygon_area([coords])
+            except TopologicalError:
+                if len(polygons) == 1:
+                    coords = area.coordinates
+                else:
+                    continue
 
-                polygons[str(match.id)]["properties"][feature] += poly_area
-                polygons[str(match.id)]["properties"]["updated"] = True
+            poly_area = round(polygon_area([coords]), 2)
+
+            polygons[str(match.id)]["properties"][feature] += poly_area
+            polygons[str(match.id)]["properties"]["updated"] = True
 
     return polygons
 

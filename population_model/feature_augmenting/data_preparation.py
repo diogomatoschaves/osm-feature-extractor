@@ -195,6 +195,7 @@ def process_base_data(
     r_tree_path,
     hexagons_file,
     skip_data_cleaning=False,
+    intersect=False,
     create_r_tree=True,
 ):
 
@@ -207,7 +208,8 @@ def process_base_data(
             base_data_dir, population_data_folder, countries_file
         )
 
-        base_data_df = intersect_polygons(base_data_df, countries_df, "GBR")
+        if intersect:
+            base_data_df = intersect_polygons(base_data_df, countries_df, "GBR")
 
         base_data_df = clean_data(base_data_df)
 

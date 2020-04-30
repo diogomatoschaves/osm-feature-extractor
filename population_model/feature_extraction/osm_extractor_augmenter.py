@@ -41,7 +41,7 @@ class OSMFileHandler(osmium.SimpleHandler):
 
         coords = [n.location.lon, n.location.lat]
 
-        tags = dict(version=n.version, **{tag.k: tag.v for tag in n.tags})
+        tags = {**{"version": n.version}, **{tag.k: tag.v for tag in n.tags}}
 
         if self.first_pass:
             for tag_id in node_tags:
@@ -75,7 +75,7 @@ class OSMFileHandler(osmium.SimpleHandler):
 
             self.ways_counter += 1
 
-            tags = dict(version=w.version, **{tag.k: tag.v for tag in w.tags})
+            tags = {**{"version": w.version}, **{tag.k: tag.v for tag in w.tags}}
 
             nodes = [node.ref for node in w.nodes]
 

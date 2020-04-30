@@ -74,7 +74,8 @@ def main():
             config.input_data_file,
             r_tree_path,
             config.polygons_file,
-            skip_data_cleaning=True,
+            skip_data_cleaning=False,
+            intersect=False,
             create_r_tree=True,
         )
 
