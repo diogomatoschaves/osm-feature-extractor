@@ -1,5 +1,6 @@
 import logging
 import re
+from shapely.errors import TopologicalError
 
 from rtree import Rtree
 from turf import length, area as polygon_area, line_string, feature_collection, InvalidInput, polygon
@@ -128,8 +129,11 @@ def match_ways_to_polygon(tag_id, ways, r_tree_index, polygons):
         matches = list(r_tree_index.intersection(way.bounds, objects=True))
 
         for match in matches:
-
-            intersection = way.intersection(match.object)
+            
+            try:
+                intersection = way.intersection(match.object)
+            except TopologicalError:
+                continue
 
             if not intersection.is_empty:
 
@@ -174,10 +178,13 @@ def match_areas_to_polygon(tag_id, areas, r_tree_index, polygons):
 
         for match in matches:
 
-            intersection = area.intersection(match.object)
+            try:
+                intersection = area.intersection(match.object)
+            except TopologicalError:
+                continue
 
             if not intersection.is_empty:
-
+                
                 geom_type = intersection.geom_type
 
                 if geom_type == "Polygon":

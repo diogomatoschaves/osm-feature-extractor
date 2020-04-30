@@ -58,7 +58,7 @@ class OSMFileHandler(osmium.SimpleHandler):
             self.nodes_counter += 1
 
         elif n.id in self.invalid_location_nodes:
-            self.nodes[n.id] = SimpleNode(n.id, coords)
+            self.nodes[n.id] = SimpleNode(n.id, coords, {})
 
             check_status(self.nodes_counter, "nodes")
 
@@ -139,7 +139,7 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
     logging.info(f"\tPerforming first pass on OSM file...")
 
     osm_handler = OSMFileHandler(polygons, r_tree_index)
-    osm_handler.apply_file(file_path)
+    osm_handler.apply_file(file_path, locations=True, idx='flex_mem')
 
     try:
         invalid_ways_ratio = (
@@ -155,13 +155,14 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
 
     logging.info(f"\tPerforming second pass on OSM file...")
 
-    osm_handler = OSMFileHandler(
-        osm_handler.polygons,
-        r_tree_index,
-        osm_handler.invalid_location_nodes,
-        osm_handler.incomplete_ways,
-        first_pass=False,
-    )
-    osm_handler.apply_file(file_path, locations=True)
+    if invalid_ways_ratio != 0:
+        osm_handler = OSMFileHandler(
+            osm_handler.polygons,
+            r_tree_index,
+            osm_handler.invalid_location_nodes,
+            osm_handler.incomplete_ways,
+            first_pass=False,
+        )
+        osm_handler.apply_file(file_path, locations=True)
 
     return osm_handler.polygons
