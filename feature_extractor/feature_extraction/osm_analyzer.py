@@ -7,6 +7,17 @@ from scipy import stats
 
 
 class OSMFileAnalyzer(osmium.SimpleHandler):
+
+    """
+    Analyzes OSM file and stores some metrics:
+
+    - number of nodes
+    - bounding box
+    - centroid
+    - variance
+
+    """
+
     def __init__(self):
         osmium.SimpleHandler.__init__(self)
 
@@ -44,18 +55,42 @@ class OSMFileAnalyzer(osmium.SimpleHandler):
         self.bbox = self.update_bbox(self.bbox, coords)
 
     def update_centroid(self, previous, new):
+        """
+        Updates centroid iteratively
+
+        :param previous: previous centroid
+        :param new: new point
+        :return: updated centroid
+        """
 
         return previous + (new - previous) / self.nodes_counter
 
     @staticmethod
-    def update_std(previous_std, previous_mean, new_mean, new_point):
+    def update_std(previous_variance, previous_mean, new_mean, new_point):
+        """
+        Updates variance iteratively
 
-        variance = previous_std + (new_point - previous_mean) * (new_point - new_mean)
+        :param previous_variance: previous variance
+        :param previous_mean: previous centroid
+        :param new_mean: new centroid
+        :param new_point: new point
+        :return: updated variance
+        """
+
+        variance = previous_variance + (new_point - previous_mean) * (new_point - new_mean)
 
         return variance
 
     @staticmethod
     def update_bbox(bounding_box, coords):
+
+        """
+        Updates bounding box containing all nodes
+
+        :param bounding_box: current bounding box
+        :param coords: new point coordinates
+        :return: updated bounding box
+        """
 
         if bounding_box[0] > coords[0]:
             bounding_box[0] = coords[0]
@@ -70,6 +105,14 @@ class OSMFileAnalyzer(osmium.SimpleHandler):
 
 
 def analyze_osm_file(osm_data_dir, osm_file):
+    """
+    Method that wraps the calls to the OSMAnalyzer class and
+    returns the results
+
+    :param osm_data_dir: Location of the osm data directory
+    :param osm_file: name of the osm file
+    :return: (number of nodes, bounding box, centroid, standard deviation)
+    """
 
     file_path = os.path.join(osm_data_dir, osm_file)
 
@@ -85,6 +128,20 @@ def analyze_osm_file(osm_data_dir, osm_file):
 
 
 def split_bounds(number_nodes, bbox, centroid, std, max_nodes_box=5e6):
+
+    """
+    Divides the bounding box in the x, y directions in sub divisions as required.
+    This is accomplished by means of using a normal distribution, meaning that
+    areas with more nodes will be split more tightly
+
+    :param number_nodes: total number of nodes in the file
+    :param bbox: bounding box containing all nodes
+    :param centroid: centroid of the nodes
+    :param std: standard deviation of the nodes
+    :param max_nodes_box: max number of nodes per division
+    :return: 2D array containing the splits of the bounding box
+        according to the rule
+    """
 
     xy_divisions = []
 

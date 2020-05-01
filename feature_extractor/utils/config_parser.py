@@ -40,12 +40,13 @@ def _get_config_file_parser():
     default_config = {}
 
     if remaining_argv or args.conf_file:
-        command = "default"
-        config = ConfigParser()
-        config.read(args.conf_file)
+        for command in ['default', 'user-defined']:
 
-        if command in config.sections():
-            default_config.update(dict(config.items(command)))
+            config = ConfigParser()
+            config.read(args.conf_file)
+
+            if command in config.sections():
+                default_config.update(dict(config.items(command)))
 
     return conf_parser, default_config, remaining_argv
 

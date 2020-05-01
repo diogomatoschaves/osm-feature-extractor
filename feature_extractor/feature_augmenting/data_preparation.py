@@ -194,16 +194,11 @@ def process_base_data(
     input_data_file,
     r_tree_path,
     hexagons_file,
-    skip_data_cleaning=False,
+    import_pop_files=False,
     intersect=False,
     create_r_tree=True,
 ):
-
-    if skip_data_cleaning:
-        logging.info("\tImporting data...")
-
-        base_data_df, input_file_found = load_data(base_data_dir, input_data_file)
-    else:
+    if import_pop_files:
         base_data_df, countries_df = import_data(
             base_data_dir, population_data_folder, countries_file
         )
@@ -214,6 +209,10 @@ def process_base_data(
         base_data_df = clean_data(base_data_df)
 
         save_data(base_data_df, base_data_dir, input_data_file)
+    else:
+        logging.info("\tImporting data...")
+
+        base_data_df, input_file_found = load_data(base_data_dir, input_data_file)
 
     polygons_df = initialize_features(base_data_df)
 

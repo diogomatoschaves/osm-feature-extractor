@@ -59,7 +59,7 @@ class Way(LineString):
 class Area(Polygon, ABC):
 
     """
-    This class stores information about osm ways
+    This class stores information about osm areas
 
     Attributes:
         id (int): ID of way

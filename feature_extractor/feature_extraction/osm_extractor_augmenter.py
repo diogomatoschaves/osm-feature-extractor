@@ -14,6 +14,14 @@ from population_model.feature_extraction.osm_extractor import check_status
 
 
 class OSMFileHandler(osmium.SimpleHandler):
+    """
+    Main OSM file processor. Takes an osm file and parses every node and way, checking
+    if they belong to any of the specified tags, and if so, passes the node / way to
+    the respective feature augmenter, which will in turn map those objects to the geojson
+    containing the polygon(s) of the area in study.
+
+    """
+
     def __init__(
         self,
         polygons,
@@ -99,6 +107,16 @@ class OSMFileHandler(osmium.SimpleHandler):
                         self.process_way(w, tag_id, tags, nodes, coords)
 
     def process_way(self, w, tag_id, tags, nodes, coords):
+        """
+        Creates a Way object and sends it to the feature augmenter for ways
+
+        :param w: osm way object
+        :param tag_id: tag being analysed
+        :param tags: osm object tags
+        :param nodes: nodes belonging to way
+        :param coords: coordinates of nodes in way
+        :return: None
+        """
 
         if self.check_for_mutually_exclusive(tag_id, tags):
             return
@@ -110,6 +128,17 @@ class OSMFileHandler(osmium.SimpleHandler):
         )
 
     def process_area(self, a, tag_id, tags, nodes, coords):
+
+        """
+       Creates an Area object and sends it to the feature augmenter for areas
+
+       :param a: osm area object
+       :param tag_id: tag being analysed
+       :param tags: osm object tags
+       :param nodes: nodes belonging to area
+       :param coords: coordinates of nodes in area
+       :return: None
+       """
 
         if self.check_for_mutually_exclusive(tag_id, tags):
             return
@@ -131,6 +160,15 @@ class OSMFileHandler(osmium.SimpleHandler):
 
 
 def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
+    """
+    Method that wraps the calls to the OSMFileHandler class and returns the results
+
+    :param osm_data_dir: Location of the osm data directory
+    :param osm_file: name of the osm file
+    :param polygons: GeoJSON object with polygons to be mapped
+    :param r_tree_path: path to the RTree index files
+    :return: mapped polygons
+    """
 
     r_tree_index = load_r_tree(r_tree_path)
 

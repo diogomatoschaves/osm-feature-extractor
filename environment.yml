@@ -1,7 +1,7 @@
-name: osm-population-model
+name: osm-feature-extractor
 channels:
-  - anaconda
   - conda-forge
+  - anaconda
   - defaults
 dependencies:
   - appdirs=1.4.3=pyh91ea838_0
@@ -177,5 +177,5 @@ dependencies:
     - pyturf==0.4.12
     - shapely==1.7.0
     - traittypes==0.2.1
-prefix: /Users/diogomatoschaves/.conda/envs/osm-population-model
+prefix: /Users/diogomatoschaves/.conda/envs/osm-feature-extractor
 
