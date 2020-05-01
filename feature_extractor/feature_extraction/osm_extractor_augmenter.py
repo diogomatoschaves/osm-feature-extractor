@@ -2,15 +2,17 @@ import logging
 import os
 
 import osmium
+from shapely.geometry import MultiPoint
+from turf import area
 
-from population_model.feature_augmenting.features_to_tags import node_tags, way_tags, area_tags
-from population_model.feature_extraction.osm_datamodel import Node, Way, SimpleNode, Area
-from population_model.feature_augmenting.features_augmenter import (
+from feature_extractor.feature_augmenting.features_to_tags import node_tags, way_tags, area_tags
+from feature_extractor.feature_extraction.osm_datamodel import Node, Way, SimpleNode, Area
+from feature_extractor.feature_augmenting.features_augmenter import (
     match_nodes_to_polygon,
     match_ways_to_polygon,
     load_r_tree,
     match_areas_to_polygon)
-from population_model.feature_extraction.osm_extractor import check_status
+from feature_extractor.feature_extraction.osm_extractor import check_status
 
 
 class OSMFileHandler(osmium.SimpleHandler):
@@ -26,6 +28,7 @@ class OSMFileHandler(osmium.SimpleHandler):
         self,
         polygons,
         r_tree_index,
+        polygon_template,
         invalid_location_nodes=None,
         invalid_location_ways=None,
         first_pass=True,
@@ -44,6 +47,8 @@ class OSMFileHandler(osmium.SimpleHandler):
         self.r_tree_index = r_tree_index
         self.nodes = {}
         self.first_pass = first_pass
+        self.convex_hull = []
+        self.polygon_template = polygon_template
 
     def node(self, n):
 
@@ -64,6 +69,9 @@ class OSMFileHandler(osmium.SimpleHandler):
             check_status(self.nodes_counter, "nodes")
 
             self.nodes_counter += 1
+
+            if self.polygon_template:
+                self.update_hull(coords, self.nodes_counter)
 
         elif n.id in self.invalid_location_nodes:
             self.nodes[n.id] = SimpleNode(n.id, coords, {})
@@ -149,6 +157,22 @@ class OSMFileHandler(osmium.SimpleHandler):
             tag_id, [area], self.r_tree_index, self.polygons
         )
 
+    def update_hull(self, new_coords, count):
+
+        if count < 3:
+            self.convex_hull.append(new_coords)
+            return
+        else:
+            try:
+                coords = [list(coord) for coord in self.convex_hull.exterior.coords]
+            except AttributeError:
+                coords = self.convex_hull
+
+        coords.append(new_coords)
+        multi_point = MultiPoint(coords)
+
+        self.convex_hull = multi_point.convex_hull
+
     @staticmethod
     def check_for_mutually_exclusive(tag_id, tags):
         if tag_id == "cycleway" and tags.get("highway") == "cycleway":
@@ -159,7 +183,7 @@ class OSMFileHandler(osmium.SimpleHandler):
             return False
 
 
-def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
+def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path, polygon_template):
     """
     Method that wraps the calls to the OSMFileHandler class and returns the results
 
@@ -167,6 +191,8 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
     :param osm_file: name of the osm file
     :param polygons: GeoJSON object with polygons to be mapped
     :param r_tree_path: path to the RTree index files
+    :param polygon_template: whether a polygon to match against was provided or not. If not, then we'll calculate
+    the concave hull of the processed nodes
     :return: mapped polygons
     """
 
@@ -176,8 +202,14 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
 
     logging.info(f"\tPerforming first pass on OSM file...")
 
-    osm_handler = OSMFileHandler(polygons, r_tree_index)
+    osm_handler = OSMFileHandler(polygons, r_tree_index, polygon_template)
     osm_handler.apply_file(file_path, locations=True, idx='flex_mem')
+
+    if polygon_template:
+        convex_hull = osm_handler.convex_hull
+        convex_hull_area = area([[list(coord) for coord in convex_hull.exterior.coords]]) / 1E6
+    else:
+        convex_hull_area = None
 
     invalid_ways_ratio = (
         len(osm_handler.incomplete_ways) /
@@ -201,4 +233,10 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
         )
         osm_handler.apply_file(file_path, locations=True)
 
-    return osm_handler.polygons
+    polygons = osm_handler.polygons
+
+    if convex_hull_area:
+        for id_, polygon in polygons.items():
+            polygons[id_]["properties"]["area"] = convex_hull_area
+
+    return polygons

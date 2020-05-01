@@ -15,13 +15,13 @@ try:
 except NameError:
     pass
 
-from population_model.utils.config_parser import get_config
-from population_model.utils.logger import configure_logger
-from population_model.feature_augmenting.data_preparation import (
+from feature_extractor.utils.config_parser import get_config
+from feature_extractor.utils.logger import configure_logger
+from feature_extractor.feature_augmenting.data_preparation import (
     process_base_data,
     load_json,
 )
-from population_model.feature_extraction.osm_extractor_augmenter import (
+from feature_extractor.feature_extraction.osm_extractor_augmenter import (
     extract_features_augment,
 )
 
@@ -43,15 +43,6 @@ def get_r_tree_name(config):
     return r_tree_path, r_tree_file_path
 
 
-def osm_extract_augment(config, hexagons, r_tree_path):
-
-    hexagons = extract_features_augment(
-        config.osm_data_dir, config.osm_file, hexagons, r_tree_path
-    )
-
-    return hexagons
-
-
 def main():
 
     # ============================ Setup ===================================
@@ -62,12 +53,14 @@ def main():
 
     # ========================== Load & prepare input data ==============================
 
+    polygon_template = True
+
     r_tree_path, r_tree_file_path = get_r_tree_name(config)
 
     if eval(config.process_base_data) or not os.path.exists(r_tree_file_path):
         logging.info("Processing base data...")
 
-        process_base_data(
+        polygon_template = process_base_data(
             config.base_data_dir,
             config.population_data_folder,
             config.countries_file,
@@ -90,7 +83,9 @@ def main():
 
     logging.info("Processing OSM data and Augmenting base data...")
 
-    polygons = osm_extract_augment(config, polygons, r_tree_path)
+    polygons = extract_features_augment(
+        config.osm_data_dir, config.osm_file, polygons, r_tree_path, polygon_template
+    )
 
     # ========================== Export Results ===================================
 
