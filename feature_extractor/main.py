@@ -53,14 +53,12 @@ def main():
 
     # ========================== Load & prepare input data ==============================
 
-    polygon_template = True
-
     r_tree_path, r_tree_file_path = get_r_tree_name(config)
 
     if eval(config.process_base_data) or not os.path.exists(r_tree_file_path):
         logging.info("Processing base data...")
 
-        polygon_template = process_base_data(
+        process_base_data(
             config.base_data_dir,
             config.population_data_folder,
             config.countries_file,
@@ -84,7 +82,7 @@ def main():
     logging.info("Processing OSM data and Augmenting base data...")
 
     polygons = extract_features_augment(
-        config.osm_data_dir, config.osm_file, polygons, r_tree_path, polygon_template
+        config.osm_data_dir, config.osm_file, polygons, r_tree_path
     )
 
     # ========================== Export Results ===================================

@@ -30,21 +30,17 @@ def load_data(base_data_dir, file_name):
 
     :param base_data_dir: path to base data directory
     :param file_name: name of file with base data
-    :return: base data data frame, if input file was found or not
+    :return: base data data frame
     """
 
     file_path = os.path.join(base_data_dir, file_name)
 
-    polygon_template = False
-
     if not os.path.exists(file_path):
         file_path = os.path.join(base_data_dir, 'template.geojson')
 
-        polygon_template = True
-
     base_data_df = gpd.read_file(file_path)
 
-    return base_data_df, polygon_template
+    return base_data_df
 
 
 def save_data(data_df, base_data_dir, file_name):
@@ -305,7 +301,7 @@ def process_base_data(
     else:
         logging.info("\tImporting data...")
 
-        base_data_df, polygon_template = load_data(base_data_dir, input_data_file)
+        base_data_df = load_data(base_data_dir, input_data_file)
 
     polygons_df = initialize_features(base_data_df)
 
@@ -317,5 +313,3 @@ def process_base_data(
     }
 
     save_json(polygons, base_data_dir, polygons_file)
-
-    return polygon_template
