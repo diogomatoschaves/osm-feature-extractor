@@ -34,25 +34,22 @@ def get_features(tags, tag_ids, feature_suffix):
     features = []
 
     for tag in tag_ids:
+        if tag in {*unspecific_tags, "total"}:
+            feature_name = tag
 
-        if tag in tags:
+        else:
+            tags_dict = eval(f"{tag}_tags")
 
-            if tag in {*unspecific_tags, "total"}:
-                feature_name = tag
-
-            else:
-                tags_dict = eval(f"{tag}_tags")
-
-                try:
-                    feature_name = tags_dict[tags[tag]]
-                    if feature_suffix not in features_types[feature_name]:
-                        continue
-                except KeyError:
+            try:
+                feature_name = tags_dict[tags[tag]]
+                if feature_suffix not in features_types[feature_name]:
                     continue
+            except KeyError:
+                continue
 
-            feature = "_".join([feature_name, feature_suffix])
+        feature = "_".join([feature_name, feature_suffix])
 
-            features.append(feature)
+        features.append(feature)
 
     return features
 

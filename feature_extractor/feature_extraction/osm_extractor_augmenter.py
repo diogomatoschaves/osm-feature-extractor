@@ -55,16 +55,14 @@ class OSMFileHandler(osmium.SimpleHandler):
 
         self.nodes_counter += 1
 
-        if len(set(tags).intersection(node_tags)) != 0:
+        node = Node(n.id, coords, tags=tags)
 
-            for tag_id in node_tags:
+        existing_tags = set(tags).intersection(node_tags)
 
-                node = Node(n.id, coords, tags=tags)
-
-                if tag_id in tags:
-                    self.polygons = match_nodes_to_polygon(
-                        [tag_id], [node], self.r_tree_index, self.polygons
-                    )
+        if len(existing_tags) != 0:
+            self.polygons = match_nodes_to_polygon(
+                existing_tags, [node], self.r_tree_index, self.polygons
+            )
 
     def way(self, w):
 

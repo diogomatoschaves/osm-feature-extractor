@@ -228,7 +228,6 @@ def initialize_features(polygon_df):
     logging.info("\tInitializing features...")
 
     polygon_df["updated"] = False
-    polygon_df["total_count"] = 0
 
     for obj in [("node", "count"), ("way", "length"), ("area", "area")]:
 
