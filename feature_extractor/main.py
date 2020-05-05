@@ -69,7 +69,7 @@ def main():
             config.polygons_file,
             import_pop_files=False,
             intersect=False,
-            create_r_tree=True,
+            create_r_tree=False,
         )
 
     else:

@@ -16,7 +16,8 @@ node_tags = {
     "power",
     "shop",
     "sport",
-    "tourism"
+    "tourism",
+    "building"
 }
 
 way_tags = {
@@ -71,16 +72,16 @@ features_types = {
     "amenity_other": ["count", "area"],
     "amenity_sustenance": ["count", "area"],
     "amenity_transportation": ["count", "area"],
-    "building_accommodation": ["area"],
-    "building_commercial": ["area"],
-    "building_religious": ["area"],
-    "building_civic": ["area"],
-    "building_agricultural": ["area"],
-    "building_sports": ["area"],
-    "building_storage": ["area"],
-    "building_cars": ["area"],
-    "building_power": ["area"],
-    "building_other": ["area"],
+    "building_accommodation": ["count", "area"],
+    "building_commercial": ["count", "area"],
+    "building_religious": ["count", "area"],
+    "building_civic": ["count", "area"],
+    "building_agricultural": ["count", "area"],
+    "building_sports": ["count", "area"],
+    "building_storage": ["count", "area"],
+    "building_cars": ["count", "area"],
+    "building_power": ["count", "area"],
+    "building_other": ["count", "area"],
     "highway_bus_stop": ["count"],
     "highway_cycleway": ["length"],
     "highway_crossing": ["count"],

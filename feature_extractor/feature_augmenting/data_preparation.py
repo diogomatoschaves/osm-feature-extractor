@@ -107,6 +107,7 @@ def import_polygons_data(dataset_dir):
     :param dataset_dir: path to directory where files are located
     :return: The concatenated GeoDataFrame
     """
+
     df = None
     for filename in os.listdir(dataset_dir):
         file_path = os.path.join(dataset_dir, filename)
@@ -231,6 +232,7 @@ def initialize_features(polygon_df):
     logging.info("\tInitializing features...")
 
     polygon_df["updated"] = False
+    polygon_df["total_count"] = 0
 
     for obj in [("node", "count"), ("way", "length"), ("area", "area")]:
 

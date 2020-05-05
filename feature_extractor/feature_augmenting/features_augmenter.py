@@ -29,28 +29,32 @@ def load_r_tree(file_path):
     return r_tree_index
 
 
-def get_features(tags, tag_id, feature_suffix):
+def get_features(tags, tag_ids, feature_suffix):
 
-    if tag_id in tags:
+    features = []
 
-        if tag_id in unspecific_tags:
-            feature_name = tag_id
+    for tag in tag_ids:
 
-        else:
-            tags_dict = eval(f"{tag_id}_tags")
+        if tag in tags:
 
-            try:
-                feature_name = tags_dict[tags[tag_id]]
-                if feature_suffix not in features_types[feature_name]:
-                    return
-            except KeyError:
-                return
+            if tag in {*unspecific_tags, "total"}:
+                feature_name = tag
 
-        feature = "_".join([feature_name, feature_suffix])
+            else:
+                tags_dict = eval(f"{tag}_tags")
 
-        return feature
+                try:
+                    feature_name = tags_dict[tags[tag]]
+                    if feature_suffix not in features_types[feature_name]:
+                        continue
+                except KeyError:
+                    continue
 
-    return
+            feature = "_".join([feature_name, feature_suffix])
+
+            features.append(feature)
+
+    return features
 
 
 def get_regex_matches(regex_str):
@@ -98,32 +102,34 @@ def handle_multi_polygon(multi_polygon):
     return feature_collection(polygons)
 
 
-def match_nodes_to_polygon(tag_id, nodes, r_tree_index, polygons):
+def match_nodes_to_polygon(tag_ids, nodes, r_tree_index, polygons):
 
     for node in nodes:
 
-        feature = get_features(node.tags, tag_id, "count")
+        features = get_features(node.tags, tag_ids, "count")
 
-        if not feature:
+        if len(features) == 0:
             return polygons
 
         matches = list(r_tree_index.intersection(node.bounds, objects=True))
 
         for match in matches:
             if node.within(match.object):
-                polygons[str(match.id)]["properties"][feature] += 1
+                for feature in features:
+                    polygons[str(match.id)]["properties"][feature] += 1
+
                 polygons[str(match.id)]["properties"]["updated"] = True
 
     return polygons
 
 
-def match_ways_to_polygon(tag_id, ways, r_tree_index, polygons):
+def match_ways_to_polygon(tag_ids, ways, r_tree_index, polygons):
 
     for way in ways:
 
-        feature = get_features(way.tags, tag_id, "length")
+        features = get_features(way.tags, tag_ids, "length")
 
-        if not feature:
+        if len(features) == 0:
             continue
 
         matches = list(r_tree_index.intersection(way.bounds, objects=True))
@@ -164,19 +170,21 @@ def match_ways_to_polygon(tag_id, ways, r_tree_index, polygons):
 
             line_length = round(length(coords, {"units": "meters"}), 2)
 
-            polygons[str(match.id)]["properties"][feature] += line_length
+            for feature in features:
+                polygons[str(match.id)]["properties"][feature] += line_length
+
             polygons[str(match.id)]["properties"]["updated"] = True
 
     return polygons
 
 
-def match_areas_to_polygon(tag_id, areas, r_tree_index, polygons):
+def match_areas_to_polygon(tag_ids, areas, r_tree_index, polygons):
 
     for area in areas:
 
-        feature = get_features(area.tags, tag_id, "area")
+        features = get_features(area.tags, tag_ids, "area")
 
-        if not feature:
+        if len(features) == 0:
             continue
 
         matches = list(r_tree_index.intersection(area.bounds, objects=True))
@@ -216,7 +224,13 @@ def match_areas_to_polygon(tag_id, areas, r_tree_index, polygons):
 
             poly_area = round(polygon_area([coords]), 2)
 
-            polygons[str(match.id)]["properties"][feature] += poly_area
+            for feature in features:
+                polygons[str(match.id)]["properties"][feature] += poly_area
+
+                if "building" in feature:
+                    feature = feature.replace("_area", "_count")
+                    polygons[str(match.id)]["properties"][feature] += 1
+
             polygons[str(match.id)]["properties"]["updated"] = True
 
     return polygons

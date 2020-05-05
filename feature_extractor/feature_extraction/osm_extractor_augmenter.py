@@ -59,11 +59,16 @@ class OSMFileHandler(osmium.SimpleHandler):
         if self.first_pass:
             for tag_id in node_tags:
 
-                if tag_id in tags:
-                    node = Node(n.id, coords, tags=tags)
+                node = Node(n.id, coords, tags=tags)
 
+                if tag_id in tags:
                     self.polygons = match_nodes_to_polygon(
-                        tag_id, [node], self.r_tree_index, self.polygons
+                        [tag_id, "total"], [node], self.r_tree_index, self.polygons
+                    )
+
+                else:
+                    self.polygons = match_nodes_to_polygon(
+                        ["total"], [node], self.r_tree_index, self.polygons
                     )
 
             check_status(self.nodes_counter, "nodes")
@@ -132,7 +137,7 @@ class OSMFileHandler(osmium.SimpleHandler):
         way = Way(w.id, coords, nodes, tags=tags)
 
         self.polygons = match_ways_to_polygon(
-            tag_id, [way], self.r_tree_index, self.polygons
+            [tag_id], [way], self.r_tree_index, self.polygons
         )
 
     def process_area(self, a, tag_id, tags, nodes, coords):
@@ -154,7 +159,7 @@ class OSMFileHandler(osmium.SimpleHandler):
         area = Area(a.id, coords, nodes, tags=tags)
 
         self.polygons = match_areas_to_polygon(
-            tag_id, [area], self.r_tree_index, self.polygons
+            [tag_id], [area], self.r_tree_index, self.polygons
         )
 
     def update_hull(self, new_coords, count):
@@ -191,8 +196,8 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path, poly
     :param osm_file: name of the osm file
     :param polygons: GeoJSON object with polygons to be mapped
     :param r_tree_path: path to the RTree index files
-    :param polygon_template: whether a polygon to match against was provided or not. If not, then we'll calculate
-    the concave hull of the processed nodes
+    :param polygon_template: whether a polygon to match against was provided or not.
+        If not, then we'll calculate the concave hull of the processed nodes
     :return: mapped polygons
     """
 
