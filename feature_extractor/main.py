@@ -2,8 +2,6 @@ import sys
 import os
 import logging
 import json
-import time
-from collections import defaultdict
 
 from turf import feature_collection
 
@@ -60,13 +58,9 @@ def main():
 
         process_base_data(
             config.base_data_dir,
-            config.population_data_folder,
-            config.countries_file,
             config.input_data_file,
             r_tree_path,
             config.polygons_file,
-            import_pop_files=False,
-            intersect=False,
             create_r_tree=False,
         )
 

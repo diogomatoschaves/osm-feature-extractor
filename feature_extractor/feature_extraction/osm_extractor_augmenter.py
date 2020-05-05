@@ -158,7 +158,7 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
 
     file_path = os.path.join(osm_data_dir, osm_file)
 
-    logging.info(f"\tParsing OSM file...")
+    logging.info(f"\tParsing OSM file: {osm_file}...")
 
     osm_handler = OSMFileHandler(polygons, r_tree_index)
     osm_handler.apply_file(file_path, locations=True, idx='flex_mem')

@@ -3,7 +3,6 @@ import json
 import logging
 
 import geopandas as gpd
-import pandas as pd
 from rtree.index import Rtree
 
 from feature_extractor.feature_augmenting.features_to_tags import (
@@ -95,98 +94,6 @@ def save_json(data, base_data_dir, file_name):
         json.dump(data, f)
 
 
-def import_polygons_data(dataset_dir):
-    """
-    Helper method to load files from a directory and concatenate them
-    into a single GeoDataFrame
-
-    :param dataset_dir: path to directory where files are located
-    :return: The concatenated GeoDataFrame
-    """
-
-    df = None
-    for filename in os.listdir(dataset_dir):
-        file_path = os.path.join(dataset_dir, filename)
-        if df is not None:
-            df = pd.concat([df, gpd.read_file(file_path)])
-        else:
-            df = gpd.read_file(file_path)
-
-    return df
-
-
-def import_data(base_data_dir, population_data_folder, countries_file):
-    """
-    Imports base data
-
-    :param base_data_dir: path to base data directory
-    :param population_data_folder: path to directory where population dataset
-    files are located
-    :param countries_file: name of GeoJSON file with countries data
-    :return: base data GeoDataFrame, countries DataFrame
-    """
-
-    logging.info("\tImporting data...")
-
-    population_data = os.path.join(base_data_dir, population_data_folder)
-
-    countries_df = gpd.read_file(os.path.join(base_data_dir, countries_file))
-
-    base_data_df = import_polygons_data(population_data)
-
-    return base_data_df, countries_df
-
-
-def intersect_polygons(df_1, df_2, country_code):
-    """
-    Intersects polygons on df_1 with country polygon contained in df_2
-
-    :param df_1: GeoDataFrame with polygons to be intersected
-    :param df_2: DataFrame with country outline polygons, with which polygons
-    in df_1 will be intersected
-    :param country_code: country code of polygon to be used in intersection
-    :return: intersected polygons GeoDataFrame
-    """
-
-    logging.info("\tIntersecting polygons...")
-
-    country_df = df_2[df_2["ISO_A3"] == country_code]
-
-    polygons_df = gpd.overlay(df_1, country_df, how="intersection")
-
-    return polygons_df
-
-
-def clean_data(base_data_df):
-    """
-    Cleans Data by removing unnecessary columns and duplicates
-
-    :param base_data_df: DataFrame to be cleaned
-    :return: cleaned DataFrame
-    """
-
-    logging.info("\tCleaning data...")
-
-    base_data_df = base_data_df.drop_duplicates(
-        subset=[
-            "building_count",
-            "highway_length",
-            "population",
-            "gdp",
-            "avg_ts",
-            "max_ts",
-            "p90_ts",
-            "area_km2",
-        ]
-    )
-
-    base_data_df = base_data_df.drop(
-        columns=["one", "avg_ts", "max_ts", "p90_ts", "local_hours", "total_hours"]
-    )
-
-    return base_data_df.reset_index(drop=True)
-
-
 def build_r_tree(polygons_df, r_tree_path, create_r_tree):
     """
     Build RTree index with input data polygons. To be used later on on polygons intersections
@@ -260,47 +167,26 @@ def initialize_features(polygon_df):
 
 def process_base_data(
     base_data_dir,
-    population_data_folder,
-    countries_file,
     input_data_file,
     r_tree_path,
     polygons_file,
-    import_pop_files=False,
-    intersect=False,
     create_r_tree=True,
 ):
     """
     Methods that wraps all the data processing logic.
 
     :param base_data_dir: path to base data directory
-    :param population_data_folder: path to directory where population dataset
     files are located
-    :param countries_file: name of GeoJSON file with countries data
     :param input_data_file: name of file with base data
     :param r_tree_path: path of where to save the RTree index on disk
     :param polygons_file: name of file where initialized GeoDataFrame will be saved
-    :param import_pop_files: if population files should be imported or not
-    :param intersect: if polygons should be intersected or not
     :param create_r_tree: if RTree should be created or not
-    :return: if input file exists of not
+    :return: None
     """
-    if import_pop_files:
-        base_data_df, countries_df = import_data(
-            base_data_dir, population_data_folder, countries_file
-        )
 
-        if intersect:
-            base_data_df = intersect_polygons(base_data_df, countries_df, "GBR")
+    logging.info("\tImporting data...")
 
-        base_data_df = clean_data(base_data_df)
-
-        save_data(base_data_df, base_data_dir, input_data_file)
-
-        polygon_template = False
-    else:
-        logging.info("\tImporting data...")
-
-        base_data_df = load_data(base_data_dir, input_data_file)
+    base_data_df = load_data(base_data_dir, input_data_file)
 
     polygons_df = initialize_features(base_data_df)
 
