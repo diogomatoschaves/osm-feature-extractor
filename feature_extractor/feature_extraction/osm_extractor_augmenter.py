@@ -3,7 +3,6 @@ import os
 
 import osmium
 from shapely.geometry import MultiPoint
-from turf import area
 
 from feature_extractor.feature_augmenting.features_to_tags import node_tags, way_tags, area_tags
 from feature_extractor.feature_extraction.osm_datamodel import Node, Way, SimpleNode, Area
@@ -30,7 +29,6 @@ class OSMFileHandler(osmium.SimpleHandler):
         r_tree_index,
         invalid_location_nodes=None,
         invalid_location_ways=None,
-        first_pass=True,
     ):
         osmium.SimpleHandler.__init__(self)
 
@@ -45,7 +43,6 @@ class OSMFileHandler(osmium.SimpleHandler):
         self.polygons = polygons
         self.r_tree_index = r_tree_index
         self.nodes = {}
-        self.first_pass = first_pass
         self.convex_hull = []
 
     def node(self, n):
@@ -54,7 +51,12 @@ class OSMFileHandler(osmium.SimpleHandler):
 
         tags = {**{"version": n.version}, **{tag.k: tag.v for tag in n.tags}}
 
-        if self.first_pass:
+        check_status(self.nodes_counter, "nodes")
+
+        self.nodes_counter += 1
+
+        if len(set(tags).intersection(node_tags)) != 0:
+
             for tag_id in node_tags:
 
                 node = Node(n.id, coords, tags=tags)
@@ -64,41 +66,22 @@ class OSMFileHandler(osmium.SimpleHandler):
                         [tag_id], [node], self.r_tree_index, self.polygons
                     )
 
-            check_status(self.nodes_counter, "nodes")
-
-            self.nodes_counter += 1
-
-        elif n.id in self.invalid_location_nodes:
-            self.nodes[n.id] = SimpleNode(n.id, coords, {})
-
-            check_status(self.nodes_counter, "nodes")
-
-            self.nodes_counter += 1
-
     def way(self, w):
 
-        if not self.first_pass and w.id not in self.incomplete_ways:
-            return
+        check_status(self.ways_counter, "ways")
+
+        self.ways_counter += 1
 
         if any(tag in w.tags for tag in {*way_tags, *area_tags}):
-
-            check_status(self.ways_counter, "ways")
-
-            self.ways_counter += 1
 
             tags = {**{"version": w.version}, **{tag.k: tag.v for tag in w.tags}}
 
             nodes = [node.ref for node in w.nodes]
 
-            if not self.first_pass and w.id in self.incomplete_ways:
-                coords = [self.nodes[node].coordinates for node in nodes]
-            else:
-                try:
-                    coords = [[n.lon, n.lat] for n in w.nodes]
-                except osmium.InvalidLocationError:
-                    self.incomplete_ways.add(w.id)
-                    self.invalid_location_nodes.update(nodes)
-                    return
+            try:
+                coords = [[n.lon, n.lat] for n in w.nodes]
+            except osmium.InvalidLocationError:
+                return
 
             if nodes[0] == nodes[-1]:
                 for tag_id in area_tags:
@@ -177,33 +160,9 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
 
     file_path = os.path.join(osm_data_dir, osm_file)
 
-    logging.info(f"\tPerforming first pass on OSM file...")
+    logging.info(f"\tParsing OSM file...")
 
     osm_handler = OSMFileHandler(polygons, r_tree_index)
     osm_handler.apply_file(file_path, locations=True, idx='flex_mem')
 
-    invalid_ways_ratio = (
-        len(osm_handler.incomplete_ways) /
-        osm_handler.ways_counter * 100
-    )
-
-    logging.info(
-        f"\t{round(invalid_ways_ratio, 2)} % of ways could not be processed on first pass"
-    )
-
-    if invalid_ways_ratio != 0:
-
-        logging.info(f"\tPerforming second pass on OSM file...")
-
-        osm_handler = OSMFileHandler(
-            osm_handler.polygons,
-            r_tree_index,
-            osm_handler.invalid_location_nodes,
-            osm_handler.incomplete_ways,
-            first_pass=False,
-        )
-        osm_handler.apply_file(file_path, locations=True)
-
-    polygons = osm_handler.polygons
-
-    return polygons
+    return osm_handler.polygons
