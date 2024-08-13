@@ -6,7 +6,7 @@ from shapely.geometry import Point, LineString, Polygon
 SimpleNode = namedtuple("Node", ("id", "coordinates", "tags"))
 
 
-class Node(Point):
+class Node:
     """This class stores data relative to nodes
 
     Attributes:
@@ -16,20 +16,22 @@ class Node(Point):
     """
 
     def __init__(self, id_=None, coords=None, tags=None):
-        Point.__init__(self, coords)
+
+        point = Point(coords)
 
         self.id: int = id_
         self.tags: Dict = tags
+        self.point = point
 
     @property
     def coordinates(self):
-        return [list(coord) for coord in self.coords][0]
+        return [list(coord) for coord in self.point.coords][0]
 
     def __getinitargs__(self):
-        return self.id, self.coords, self.tags
+        return self.id, self.point.coords, self.tags
 
 
-class Way(LineString):
+class Way:
 
     """
     This class stores information about osm ways
@@ -42,21 +44,22 @@ class Way(LineString):
     """
 
     def __init__(self, id_=None, coords=None, nodes=None, tags=None):
-        LineString.__init__(self, coords)
+        line_string = LineString(coords)
 
         self.id: int = id_
         self.nodes: List[int] = nodes
         self.tags: Dict = tags
+        self.line_string: LineString = line_string
 
     @property
     def coordinates(self):
-        return [list(coord) for coord in self.coords]
+        return [list(coord) for coord in self.line_string.coords]
 
     def __getinitargs__(self):
-        return self.id, self.coords, self.nodes, self.tags
+        return self.id, self.line_string.coords, self.nodes, self.tags
 
 
-class Area(Polygon, ABC):
+class Area:
 
     """
     This class stores information about osm areas
@@ -69,15 +72,16 @@ class Area(Polygon, ABC):
     """
 
     def __init__(self, id_=None, coords=None, nodes=None, tags=None):
-        Polygon.__init__(self, coords)
+        polygon = Polygon(coords)
 
         self.id: int = id_
         self.nodes: List[int] = nodes
         self.tags: Dict = tags
+        self.polygon = polygon
 
     @property
     def coordinates(self):
-        return [list(coord) for coord in self.exterior.coords]
+        return [list(coord) for coord in self.polygon.exterior.coords]
 
     def __getinitargs__(self):
-        return self.id, self.coords, self.nodes, self.tags
+        return self.id, self.polygon.exterior.coords, self.nodes, self.tags

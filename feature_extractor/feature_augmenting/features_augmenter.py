@@ -108,10 +108,10 @@ def match_nodes_to_polygon(tag_ids, nodes, r_tree_index, polygons):
         if len(features) == 0:
             return polygons
 
-        matches = list(r_tree_index.intersection(node.bounds, objects=True))
+        matches = list(r_tree_index.intersection(node.point.bounds, objects=True))
 
         for match in matches:
-            if node.within(match.object):
+            if node.point.within(match.object):
                 for feature in features:
                     polygons[str(match.id)]["properties"][feature] += 1
 
@@ -129,12 +129,12 @@ def match_ways_to_polygon(tag_ids, ways, r_tree_index, polygons):
         if len(features) == 0:
             continue
 
-        matches = list(r_tree_index.intersection(way.bounds, objects=True))
+        matches = list(r_tree_index.intersection(way.line_string.bounds, objects=True))
 
         for match in matches:
             
             try:
-                intersection = way.intersection(match.object)
+                intersection = way.line_string.intersection(match.object)
 
                 if not intersection.is_empty:
 
@@ -161,7 +161,7 @@ def match_ways_to_polygon(tag_ids, ways, r_tree_index, polygons):
 
             except TopologicalError:
                 if len(polygons) == 1:
-                    coords = way.coordinates
+                    coords = way.line_string.coords
                 else:
                     continue
 
@@ -184,12 +184,12 @@ def match_areas_to_polygon(tag_ids, areas, r_tree_index, polygons):
         if len(features) == 0:
             continue
 
-        matches = list(r_tree_index.intersection(area.bounds, objects=True))
+        matches = list(r_tree_index.intersection(area.polygon.bounds, objects=True))
 
         for match in matches:
 
             try:
-                intersection = area.intersection(match.object)
+                intersection = area.polygon.intersection(match.object)
                 if not intersection.is_empty:
 
                     geom_type = intersection.geom_type
@@ -215,7 +215,7 @@ def match_areas_to_polygon(tag_ids, areas, r_tree_index, polygons):
 
             except TopologicalError:
                 if len(polygons) == 1:
-                    coords = area.coordinates
+                    coords = area.polygon.coords
                 else:
                     continue
 
