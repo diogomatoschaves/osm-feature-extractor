@@ -22,6 +22,7 @@ class OSMFileAnalyzer(osmium.SimpleHandler):
         osmium.SimpleHandler.__init__(self)
 
         self.nodes_counter = 0
+        self.ways_counter = 0
         self.bbox = [np.inf, np.inf, -np.inf, -np.inf]
         self.centroid = [0, 0]
         self.previous_centroid = [0, 0]
@@ -53,6 +54,9 @@ class OSMFileAnalyzer(osmium.SimpleHandler):
         ]
 
         self.bbox = self.update_bbox(self.bbox, coords)
+
+    def way(self, _):
+        self.ways_counter += 1
 
     def update_centroid(self, previous, new):
         """
@@ -124,7 +128,8 @@ def analyze_osm_file(osm_data_dir, osm_file):
         np.sqrt(osm_handler.variance[1] / osm_handler.nodes_counter),
     ]
 
-    return osm_handler.nodes_counter, osm_handler.bbox, osm_handler.centroid, std
+    return (osm_handler.nodes_counter, osm_handler.ways_counter,
+            osm_handler.bbox, osm_handler.centroid, std)
 
 
 def split_bounds(number_nodes, bbox, centroid, std, max_nodes_box=5e6):
