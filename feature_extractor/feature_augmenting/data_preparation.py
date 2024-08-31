@@ -22,20 +22,14 @@ from feature_extractor.feature_augmenting.features_to_tags import (
 )
 
 
-def load_data(base_data_dir, file_name):
+def load_data(file_path):
     """
     Loads base data from file if it exists, otherwise loads a polygon
     from template.geojson
 
-    :param base_data_dir: path to base data directory
-    :param file_name: name of file with base data
-    :return: base data data frame
+    :param file_path: Path to file with the polygon geojson features to be mapped
+    :return: base data dataframe
     """
-
-    file_path = os.path.join(base_data_dir, file_name)
-
-    if not os.path.exists(file_path):
-        file_path = os.path.join(base_data_dir, 'template.geojson')
 
     base_data_df = gpd.read_file(file_path)
 
@@ -61,16 +55,16 @@ def save_data(data_df, base_data_dir, file_name):
     data_df.to_file(file_path, driver="GeoJSON")
 
 
-def load_json(base_data_dir, file_name):
+def load_json(osm_extractor_files_dir, file_name):
     """
     Loads dat from JSON file
 
-    :param base_data_dir: path to base data directory
+    :param osm_extractor_files_dir: path to base data directory
     :param file_name: name of file with base data
     :return: Loaded data
     """
 
-    file_path = os.path.join(base_data_dir, file_name)
+    file_path = os.path.join(osm_extractor_files_dir, file_name)
 
     with open(file_path, "r") as f:
         data = json.load(f)
@@ -78,17 +72,17 @@ def load_json(base_data_dir, file_name):
     return data
 
 
-def save_json(data, base_data_dir, file_name):
+def save_json(data, osm_extractor_files_dir, file_name):
     """
     :param data: data to be saved
-    :param base_data_dir: path to base data directory
+    :param osm_extractor_files_dir: path to base data directory
     :param file_name: name of file to be saved
     :return: None
     """
 
-    logging.info(f"\tSaving {file_name} in {base_data_dir}...")
+    logging.info(f"\tSaving {file_name} in {osm_extractor_files_dir}...")
 
-    file_path = os.path.join(base_data_dir, file_name)
+    file_path = os.path.join(osm_extractor_files_dir, file_name)
 
     with open(file_path, "w") as f:
         json.dump(data, f)
@@ -166,8 +160,8 @@ def initialize_features(polygon_df):
 
 
 def process_base_data(
-    base_data_dir,
-    input_data_file,
+    osm_extractor_files_dir,
+    input_polygons_file,
     r_tree_path,
     polygons_file,
     create_r_tree=True,
@@ -175,9 +169,8 @@ def process_base_data(
     """
     Methods that wraps all the data processing logic.
 
-    :param base_data_dir: path to base data directory
-    files are located
-    :param input_data_file: name of file with base data
+    :param osm_extractor_files_dir: path to extractor files data directory
+    :param input_polygons_file: name of file with base data
     :param r_tree_path: path of where to save the RTree index on disk
     :param polygons_file: name of file where initialized GeoDataFrame will be saved
     :param create_r_tree: if RTree should be created or not
@@ -186,7 +179,7 @@ def process_base_data(
 
     logging.info("\tImporting data...")
 
-    base_data_df = load_data(base_data_dir, input_data_file)
+    base_data_df = load_data(input_polygons_file)
 
     polygons_df = initialize_features(base_data_df)
 
@@ -197,4 +190,4 @@ def process_base_data(
         for feature in json.loads(polygons_df.to_json())["features"]
     }
 
-    save_json(polygons, base_data_dir, polygons_file)
+    save_json(polygons, osm_extractor_files_dir, polygons_file)

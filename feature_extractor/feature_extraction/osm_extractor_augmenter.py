@@ -143,12 +143,11 @@ class OSMFileHandler(osmium.SimpleHandler):
             return False
 
 
-def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
+def extract_features_augment(osm_file, polygons, r_tree_path):
     """
     Method that wraps the calls to the OSMFileHandler class and returns the results
 
-    :param osm_data_dir: Location of the osm data directory
-    :param osm_file: name of the osm file
+    :param osm_file: Path to the osm file
     :param polygons: GeoJSON object with polygons to be mapped
     :param r_tree_path: path to the RTree index files
     :return: mapped polygons
@@ -156,11 +155,9 @@ def extract_features_augment(osm_data_dir, osm_file, polygons, r_tree_path):
 
     r_tree_index = load_r_tree(r_tree_path)
 
-    file_path = os.path.join(osm_data_dir, osm_file)
-
     logging.info(f"\tParsing OSM file: {osm_file}...")
 
     osm_handler = OSMFileHandler(polygons, r_tree_index)
-    osm_handler.apply_file(file_path, locations=True, idx='flex_mem')
+    osm_handler.apply_file(osm_file, locations=True, idx='flex_mem')
 
     return osm_handler.polygons

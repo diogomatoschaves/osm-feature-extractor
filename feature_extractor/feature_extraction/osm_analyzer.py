@@ -108,20 +108,17 @@ class OSMFileAnalyzer(osmium.SimpleHandler):
         return bounding_box
 
 
-def analyze_osm_file(osm_data_dir, osm_file):
+def analyze_osm_file(osm_file):
     """
     Method that wraps the calls to the OSMAnalyzer class and
     returns the results
 
-    :param osm_data_dir: Location of the osm data directory
-    :param osm_file: name of the osm file
+    :param osm_file: Path to the osm file
     :return: (number of nodes, bounding box, centroid, standard deviation)
     """
 
-    file_path = os.path.join(osm_data_dir, osm_file)
-
     osm_handler = OSMFileAnalyzer()
-    osm_handler.apply_file(file_path)
+    osm_handler.apply_file(osm_file)
 
     std = [
         np.sqrt(osm_handler.variance[0] / osm_handler.nodes_counter),

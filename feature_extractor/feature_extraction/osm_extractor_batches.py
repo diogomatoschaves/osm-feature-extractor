@@ -170,16 +170,12 @@ class OSMFileHandler(osmium.SimpleHandler):
             pickle.dump(self.ways, f)
 
 
-def extract_features_batches(
-    osm_data_dir, osm_file, bounds, border_edges=None, way_edges=None, batch=None
-):
-
-    file_path = os.path.join(osm_data_dir, osm_file)
+def extract_features_batches(osm_file, bounds, border_edges=None, way_edges=None, batch=None):
 
     osm_handler = OSMFileHandler(bounds, border_edges, way_edges, batch)
-    osm_handler.apply_file(file_path)
+    osm_handler.apply_file(osm_file)
 
-    osm_handler.save(osm_data_dir)
+    osm_handler.save()
 
     return (
         osm_handler.nodes,
