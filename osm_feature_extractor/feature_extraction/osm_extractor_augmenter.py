@@ -4,14 +4,14 @@ import os
 import osmium
 from shapely.geometry import MultiPoint
 
-from feature_extractor.feature_augmenting.features_to_tags import node_tags, way_tags, area_tags
-from feature_extractor.feature_extraction.osm_datamodel import Node, Way, SimpleNode, Area
-from feature_extractor.feature_augmenting.features_augmenter import (
+from osm_feature_extractor.feature_augmenting.features_to_tags import node_tags, way_tags, area_tags
+from osm_feature_extractor.feature_extraction.osm_datamodel import Node, Way, SimpleNode, Area
+from osm_feature_extractor.feature_augmenting.features_augmenter import (
     match_nodes_to_polygon,
     match_ways_to_polygon,
     load_r_tree,
     match_areas_to_polygon)
-from feature_extractor.feature_extraction.osm_extractor import check_status
+from osm_feature_extractor.feature_extraction.osm_extractor import check_status
 
 
 class OSMFileHandler(osmium.SimpleHandler):

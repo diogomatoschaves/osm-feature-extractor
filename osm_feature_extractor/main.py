@@ -13,14 +13,14 @@ try:
 except NameError:
     pass
 
-from feature_extractor.utils.config_parser import get_config
-from feature_extractor.utils.logger import configure_logger
-from feature_extractor.feature_extraction.osm_analyzer import analyze_osm_file
-from feature_extractor.feature_augmenting.data_preparation import (
+from osm_feature_extractor.utils.config_parser import get_config
+from osm_feature_extractor.utils.logger import configure_logger
+from osm_feature_extractor.feature_extraction.osm_analyzer import analyze_osm_file
+from osm_feature_extractor.feature_augmenting.data_preparation import (
     process_base_data,
     load_json,
 )
-from feature_extractor.feature_extraction.osm_extractor_augmenter import (
+from osm_feature_extractor.feature_extraction.osm_extractor_augmenter import (
     extract_features_augment,
 )
 

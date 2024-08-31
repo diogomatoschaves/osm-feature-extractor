@@ -5,7 +5,7 @@ from shapely.errors import TopologicalError
 from rtree import Rtree
 from turf import length, area as polygon_area, line_string, feature_collection, InvalidInput, polygon
 
-from feature_extractor.feature_augmenting.features_to_tags import (
+from osm_feature_extractor.feature_augmenting.features_to_tags import (
     features_types,
     building_tags,
     highway_tags,

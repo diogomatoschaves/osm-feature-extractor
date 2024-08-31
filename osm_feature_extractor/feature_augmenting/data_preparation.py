@@ -5,7 +5,7 @@ import logging
 import geopandas as gpd
 from rtree.index import Rtree
 
-from feature_extractor.feature_augmenting.features_to_tags import (
+from osm_feature_extractor.feature_augmenting.features_to_tags import (
     features_types,
     building_tags,
     highway_tags,

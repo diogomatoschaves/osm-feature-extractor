@@ -4,6 +4,10 @@ version = "0.1.0"
 description = "Library to extract OSM features and map them to GeoJSON polygons."
 authors = ["Diogo Matos Chaves <diogo_chaves@hotmail.com>"]
 readme = "README.md"
+license = "MIT"
+repository = "https://github.com/diogomatoschaves/osm-feature-extractor"
+keywords = ["osm", "feature-augmentation", "feature-extractor", "osm-features"]
+packages = [{include = "osm_feature_extractor"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"

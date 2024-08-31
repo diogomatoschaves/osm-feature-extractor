@@ -11,11 +11,11 @@ the [OSM wiki](https://wiki.openstreetmap.org/wiki/Map_Features).
 
 Example generated dataframe:
 
-![df](feature_extractor/utils/img/data_frame.png)
+![df](osm_feature_extractor/utils/img/data_frame.png)
 
 Data visualised on a map:
 
-![df](feature_extractor/utils/img/data_kepler.png)
+![df](osm_feature_extractor/utils/img/data_kepler.png)
 
 ## Usage
 
@@ -34,7 +34,7 @@ When all the packages have been installed and the virtual env is activated, you 
 the script that will map the features:
 
 ```shell script
-$ python feature_extractor/main.py
+$ python osm_feature_extractor/main.py
 ```
 
 The above command will run on an included OSM file `isle-of-wight-latest.osm.pbf` and `isle-of-wight.geojson`.
@@ -44,8 +44,8 @@ The main ones are detailed below:
 
 **osm_file**: Name of osm file whose features will be extracted. To download more files visit the 
 [geofabrik](https://download.geofabrik.de/) website. <br>
-**input_data_file**: Name of file containing the GeoJSON polygon(s) for which the OSM features will be mapped against. <br>
-**out_file**: Path to the output file where the mapped OSM features are written to. <br>
+**input_polygons_file**: Name of file containing the GeoJSON polygon(s) for which the OSM features will be mapped against. <br>
+**output_file**: Path to the output file where the mapped OSM features are written to. <br>
 
 **Note**: _Large files might take a while to process. It is recommended to use the CLI
 [osmium extract](https://docs.osmcode.org/osmium/latest/osmium-extract.html) tool in order to reduce the OSM file to the 

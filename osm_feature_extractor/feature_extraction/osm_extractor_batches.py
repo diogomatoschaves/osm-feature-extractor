@@ -6,9 +6,9 @@ from collections import defaultdict
 import osmium
 from ordered_set import OrderedSet
 
-from feature_extractor.feature_augmenting.features_to_tags import node_tags, way_tags
-from feature_extractor.feature_extraction.osm_datamodel import Node, SimpleNode, Way
-from feature_extractor.feature_extraction.osm_extractor import (
+from osm_feature_extractor.feature_augmenting.features_to_tags import node_tags, way_tags
+from osm_feature_extractor.feature_extraction.osm_datamodel import Node, SimpleNode, Way
+from osm_feature_extractor.feature_extraction.osm_extractor import (
     in_bbox,
     check_status,
 )
