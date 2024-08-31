@@ -1,10 +1,11 @@
-# OSM Feature Extractor
+# OSM Feature Extractor 
 
-## Introduction
+[![PyPI version](https://badge.fury.io/py/osm-feature-extractor.svg)](https://badge.fury.io/py/osm-feature-extractor)
 
-Lightweight application to automatically extract features from an OSM file, and map them to 
-user defined GeoJSON polygon(s). The mapped features can then be potentially used for machine learning applications based
-on OSM data. The extracted features can be a `count` for nodes, a `length` for ways and `area` for areas.
+A lightweight application designed to automatically extract features from an OpenStreetMap (OSM) 
+file and map them to a user-defined GeoJSON file containing a collection of polygons. 
+The extracted features can include `count` for nodes, `length` for ways, and `area` for areas. 
+These features can then be used for machine learning applications based on OSM data.
 
 For more details on the features that are extracted, check [FEATURES.md](FEATURES.md) and 
 the [OSM wiki](https://wiki.openstreetmap.org/wiki/Map_Features).
@@ -17,39 +18,53 @@ Data visualised on a map:
 
 ![df](osm_feature_extractor/utils/img/data_kepler.png)
 
+## Installation
+
+    $ pip install osm-feature-extractor
+
 ## Usage
 
-After cloning the project into your local machine, you'll need to create a virtual environment with 
-the required packages. This can be achieved easily with [Poetry](https://python-poetry.org/), as it 
-will make sure all the versions are correct, but alternatively it can be installed by other means
-with the `requirements.txt` file provided. At the root directory of the project run:
+After installation, you can use the tool directly with the `osm_feature_extractor` command, 
+which supports two primary operations: `extract` and `analyze`.
 
-```shell script
-$ poetry install
+### `extract`
 
-$ poetry shell
+The `extract` command requires a minimum of three flags:
+
+    $ osm_feature_extractor extract \
+        --osm-file <path_to_osm_file> \ 
+        --input-polygons-file <path_to_polygons_file> \
+        --output-file <path_to_output_file>
+
+To see all available flags, use the help command:
+
+    $ osm_feature_extractor extract --help
+
+Alternatively, you can provide a `.conf` file with the required parameters:
+
+    $ osm_feature_extractor extract --conf-file <path_to_conf_file>
+
+The configuration file should have the following format:
+
+```shell
+[user-defined]
+osm_file: <path_to_osm_file>
+input_polygons_file: <path_to_polygons_file>
+output_file: <path_to_output_file>
+
+[default]
+process_base_data: True
+process_osm_data: True
+polygons_file: polygons.geojson
+osm_extractor_files_dir: osm_extractor_files_dir
 ```
 
-When all the packages have been installed and the virtual env is activated, you can then run
-the script that will map the features:
+**Note**: _Processing large OSM files may take some time. It is recommended to use the CLI tool [osmium extract](https://docs.osmcode.org/osmium/latest/osmium-extract.html)
+to reduce the OSM file to your area of interest before running the feature extractor._
 
-```shell script
-$ python osm_feature_extractor/main.py
-```
+### `analyze` 
 
-The above command will run on an included OSM file `isle-of-wight-latest.osm.pbf` and `isle-of-wight.geojson`.
+The `analyze` command provides a quick overview of the OSM file, including the total number of nodes, 
+ways, bounds, and the centroid. To use this feature, run:
 
-You can go to [configuration file](proj.conf) in order to adjust the app configuration parameters. 
-The main ones are detailed below:
-
-**osm_file**: Name of osm file whose features will be extracted. To download more files visit the 
-[geofabrik](https://download.geofabrik.de/) website. <br>
-**input_polygons_file**: Name of file containing the GeoJSON polygon(s) for which the OSM features will be mapped against. <br>
-**output_file**: Path to the output file where the mapped OSM features are written to. <br>
-
-**Note**: _Large files might take a while to process. It is recommended to use the CLI
-[osmium extract](https://docs.osmcode.org/osmium/latest/osmium-extract.html) tool in order to reduce the OSM file to the 
-area of interest first and then run the feature extractor._
-
-`
-
+     $ osm_feature_extractor analyze --osm-file <path_to_osm_file>
