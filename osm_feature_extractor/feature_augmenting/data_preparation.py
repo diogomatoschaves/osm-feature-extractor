@@ -1,8 +1,10 @@
 import os
 import json
 import logging
+from warnings import simplefilter
 
 import geopandas as gpd
+import pandas as pd
 from rtree.index import Rtree
 
 from osm_feature_extractor.feature_augmenting.features_to_tags import (
@@ -20,6 +22,8 @@ from osm_feature_extractor.feature_augmenting.features_to_tags import (
     way_tags,
     area_tags,
 )
+
+simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 
 def load_data(file_path):
@@ -130,6 +134,8 @@ def initialize_features(polygon_df):
 
     polygon_df["updated"] = False
 
+    features = []
+
     for obj in [("node", "count"), ("way", "length"), ("area", "area")]:
 
         object_tags = eval(f"{obj[0]}_tags")
@@ -141,7 +147,7 @@ def initialize_features(polygon_df):
 
                 feature = "_".join([feature_name, obj[1]])
 
-                polygon_df[feature] = 0
+                features.append(feature)
 
             else:
                 features_dict = eval(f"{tag}_tags")
@@ -154,7 +160,9 @@ def initialize_features(polygon_df):
 
                         feature = "_".join([feature_name, obj[1]])
 
-                        polygon_df[feature] = 0
+                        features.append(feature)
+
+        polygon_df[features] = 0
 
     return polygon_df
 
