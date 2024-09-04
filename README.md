@@ -2,8 +2,8 @@
 
 [![PyPI version](https://badge.fury.io/py/osm-feature-extractor.svg)](https://badge.fury.io/py/osm-feature-extractor)
 
-A lightweight application designed to automatically extract features from an OpenStreetMap (OSM) 
-file and map them to a user-defined GeoJSON file containing a collection of polygons. 
+A lightweight command line interface designed to extract features from an OpenStreetMap (OSM) 
+file and map them to user-defined areas (polygons) contained in a GeoJSON file. 
 The extracted features can include `count` for nodes, `length` for ways, and `area` for areas. 
 These features can then be used for machine learning applications based on OSM data.
 
