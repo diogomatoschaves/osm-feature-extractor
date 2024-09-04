@@ -24,7 +24,7 @@ decorator==5.1.1
 defusedxml==0.7.1
 executing==2.1.0
 fastjsonschema==2.20.0
-fiona==1.9.6
+fiona==1.10.0
 fonttools==4.53.1
 fqdn==1.5.1
 geopandas==1.0.1
